@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon Race Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>Pokemon Race Game</h1>
+  <div id="race-track">
+    <!-- Race Track Container -->
+    <div class="track">
+      <div class="pokemon" id="pokemon1"></div>
+      <div class="pokemon" id="pokemon2"></div>
+      <div class="pokemon" id="pokemon3"></div>
+      <!-- Add more pokemon divs up to 20 -->
+    </div>
+  </div>
+
+  <div id="controls">
+    <!-- Buttons to move each Pokemon -->
+    <button class="move-btn" id="btn1">Move Pokemon 1</button>
+    <button class="move-btn" id="btn2">Move Pokemon 2</button>
+    <button class="move-btn" id="btn3">Move Pokemon 3</button>
+    <!-- Add more buttons up to 20 -->
+  </div>
+
+  <div id="timer">
+    <p>Time Remaining: <span id="countdown">5</span> seconds</p>
+  </div>
+
+  <div id="winner">
+    <p id="winner-text"></p>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
