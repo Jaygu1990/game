@@ -1,0 +1,59 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+#race-track {
+  position: relative;
+  width: 80%;
+  margin: 20px auto;
+  height: 100px;
+  background-color: #f0f0f0;
+  border: 2px solid #333;
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pokemon {
+  position: absolute;
+  top: 0;
+  width: 50px;
+  height: 50px;
+  background-color: #ffcc00;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 50px;
+  color: white;
+  font-weight: bold;
+}
+
+#controls {
+  margin-top: 20px;
+}
+
+.move-btn {
+  padding: 10px;
+  margin: 5px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.move-btn:hover {
+  background-color: #45a049;
+}
+
+#winner {
+  margin-top: 20px;
+}
+
+#timer {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: bold;
+}
