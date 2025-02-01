@@ -27,9 +27,11 @@ function declareWinner() {
   raceFinished = true;
 }
 
+// Add event listeners for buttons
 document.getElementById("btn1").onclick = () => movePokemon(0);
 document.getElementById("btn2").onclick = () => movePokemon(1);
 document.getElementById("btn3").onclick = () => movePokemon(2);
 // Add more event listeners for buttons up to 20
 
 startTimer(); // Start the countdown timer
+
