@@ -4,36 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pokemon Race Game</title>
-  <link rel="stylesheet" href="CSS.css"> <!-- Ensure correct path -->
+  <link rel="stylesheet" href="CSS.css">
 </head>
 <body>
-
   <h1>Pokemon Race Game</h1>
-  
-  <div id="race-track">
-    <div class="track">
-      <div class="pokemon" id="pokemon1">P1</div>
-      <div class="pokemon" id="pokemon2">P2</div>
-      <div class="pokemon" id="pokemon3">P3</div>
-      <!-- Add more pokemon divs up to 20 -->
+
+  <div id="login-container">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Enter your name" />
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="game-container" style="display:none;">
+    <div id="race-track">
+      <div class="track">
+        <!-- Dynamic Pokémon rows will be added here -->
+      </div>
+    </div>
+    
+    <div id="controls">
+      <!-- Buttons for each player will be shown here -->
+    </div>
+
+    <div id="timer">
+      <p>Time Remaining: <span id="countdown">5</span> seconds</p>
+    </div>
+
+    <div id="winner">
+      <p id="winner-text"></p>
     </div>
   </div>
 
-  <div id="controls">
-    <button class="move-btn" id="btn1">Move Pokemon 1</button>
-    <button class="move-btn" id="btn2">Move Pokemon 2</button>
-    <button class="move-btn" id="btn3">Move Pokemon 3</button>
-    <!-- Add more buttons up to 20 -->
-  </div>
-
-  <div id="timer">
-    <p>Time Remaining: <span id="countdown">5</span> seconds</p>
-  </div>
-
-  <div id="winner">
-    <p id="winner-text"></p>
-  </div>
-
-  <script src="JS.js"></script> <!-- Ensure correct path -->
+  <script src="JS.js"></script>
 </body>
 </html>
+
