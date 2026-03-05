@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon Race Game</title>
+  <link rel="stylesheet" href="CSS.css">
+</head>
+<body>
+  <h1>Pokemon Race Game</h1>
+
+  <div id="login-container">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Enter your name" />
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="game-container" style="display:none;">
+    <div id="race-track">
+      <div class="track">
+        <!-- Dynamic Pokémon rows will be added here -->
+      </div>
+    </div>
+    
+    <div id="controls">
+      <!-- Buttons for each player will be shown here -->
+    </div>
+
+    <div id="timer">
+      <p>Time Remaining: <span id="countdown">5</span> seconds</p>
+    </div>
+
+    <div id="winner">
+      <p id="winner-text"></p>
+    </div>
+  </div>
+
+  <script src="JS.js"></script>
+</body>
+</html>
+
