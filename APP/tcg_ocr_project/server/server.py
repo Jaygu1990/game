@@ -529,6 +529,7 @@ async def ocr_endpoint(file: UploadFile = File(...)):
     如果所有worker都在忙，会等待直到有worker空闲（最多等待QUEUE_WAIT_TIMEOUT秒）
     如果队列满，也会等待直到有空位
     """
+    await ensure_models_loaded()  # 确保模型已加载（延迟加载）
     queue_wait_start = time.time()
     stats['total_requests'] += 1
     
