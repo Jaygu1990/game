@@ -805,12 +805,31 @@ async def ocr_direct_endpoint(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     import uvicorn
+    
+    logger.info("=" * 70)
+    logger.info("🚀 启动服务器...")
+    logger.info("=" * 70)
+    
     port = int(os.getenv("PORT", 8000))
     workers = int(os.getenv("UVICORN_WORKERS", "1"))  # Render建议用1个worker，用线程池处理并发
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        workers=workers,
-        log_level="info"
-    )
+    
+    logger.info(f"端口: {port}")
+    logger.info(f"Workers: {workers}")
+    logger.info(f"Host: 0.0.0.0")
+    logger.info("=" * 70)
+    logger.info("服务器正在启动，模型将在首次请求时加载...")
+    logger.info("=" * 70)
+    
+    try:
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=port,
+            workers=workers,
+            log_level="info"
+        )
+    except Exception as e:
+        logger.error(f"❌ 服务器启动失败: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise
