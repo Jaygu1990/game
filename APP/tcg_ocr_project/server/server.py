@@ -452,15 +452,43 @@ def process_image_sync(image_bytes: bytes) -> Dict:
         }
 
 # ===== API 路由 =====
+# 延迟加载模型（避免启动超时）
+# 模型将在第一次请求时加载，而不是在启动时加载
+models_loading = False
+models_loaded = False
+
+async def ensure_models_loaded():
+    """确保模型已加载（延迟加载）"""
+    global models_loading, models_loaded, yolo_model, ocr_model
+    
+    if models_loaded:
+        return
+    
+    if models_loading:
+        # 如果正在加载，等待完成
+        while models_loading:
+            await asyncio.sleep(0.1)
+        return
+    
+    models_loading = True
+    try:
+        if yolo_model is None or ocr_model is None:
+            logger.info("首次请求，开始加载模型...")
+            load_models()
+            models_loaded = True
+            logger.info("✅ 模型加载完成，服务就绪")
+    except Exception as e:
+        logger.error(f"模型加载失败: {e}")
+        models_loading = False
+        raise
+    finally:
+        models_loading = False
+
 @app.on_event("startup")
 async def startup_event():
-    """启动时加载模型"""
-    try:
-        load_models()
-        logger.info(f"服务器配置: MAX_WORKERS={MAX_WORKERS}, MAX_QUEUE_SIZE={MAX_QUEUE_SIZE}")
-    except Exception as e:
-        logger.error(f"启动失败: {e}")
-        raise
+    """启动事件（不加载模型，避免超时）"""
+    logger.info(f"服务器启动完成，模型将在首次请求时加载")
+    logger.info(f"服务器配置: MAX_WORKERS={MAX_WORKERS}, MAX_QUEUE_SIZE={MAX_QUEUE_SIZE}")
 
 @app.get("/", response_model=HealthResponse)
 async def root():
@@ -588,6 +616,8 @@ async def ocr_direct_endpoint(file: UploadFile = File(...)):
     
     适用于低并发场景或测试
     """
+    # 确保模型已加载（延迟加载）
+    await ensure_models_loaded()
     stats['total_requests'] += 1
     
     try:
