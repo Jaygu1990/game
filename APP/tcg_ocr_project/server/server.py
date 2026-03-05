@@ -42,10 +42,7 @@ import yaml
 from ultralytics import YOLO
 
 # ===== 配置 =====
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# 日志已在上面初始化，这里复用
 logger = logging.getLogger(__name__)
 
 # 模型路径配置
