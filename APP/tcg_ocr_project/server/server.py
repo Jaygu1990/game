@@ -41,6 +41,19 @@ logger_temp = logging.getLogger(__name__)
 if PADDLEOCR_DIR.exists():
     sys.path.insert(0, str(PADDLEOCR_DIR))
     logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
+    
+    # 验证ppocr模块是否存在
+    ppocr_path = PADDLEOCR_DIR / 'ppocr'
+    if ppocr_path.exists():
+        logger_temp.info(f"✅ ppocr目录存在: {ppocr_path}")
+        modeling_path = ppocr_path / 'modeling'
+        if modeling_path.exists():
+            logger_temp.info(f"✅ ppocr.modeling目录存在: {modeling_path}")
+        else:
+            logger_temp.error(f"❌ ppocr.modeling目录不存在: {modeling_path}")
+    else:
+        logger_temp.error(f"❌ ppocr目录不存在: {ppocr_path}")
+        logger_temp.info(f"   PaddleOCR目录内容: {list(PADDLEOCR_DIR.iterdir())[:10]}")
 else:
     # 如果本地没有PaddleOCR目录，尝试添加paddleocr包的路径
     logger_temp.info(f"⚠️  本地PaddleOCR目录不存在: {PADDLEOCR_DIR}")
