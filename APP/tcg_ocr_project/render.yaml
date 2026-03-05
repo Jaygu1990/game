@@ -5,8 +5,14 @@ services:
     pythonVersion: "3.11"
     rootDir: APP/tcg_ocr_project
     buildCommand: |
+      git submodule update --init --recursive || echo "Submodule update failed, trying direct clone..." &&
+      if [ ! -d "PaddleOCR" ] && [ ! -d "APP/tcg_ocr_project/PaddleOCR" ]; then 
+        echo "Cloning PaddleOCR repository..." && 
+        git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git APP/tcg_ocr_project/PaddleOCR || 
+        git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git PaddleOCR || 
+        echo "Failed to clone PaddleOCR"; 
+      fi &&
       cd server && pip install -r requirements_server.txt
-      cd .. && if [ ! -d "PaddleOCR" ]; then echo "Cloning PaddleOCR repository..." && git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git || echo "Failed to clone PaddleOCR"; fi
     startCommand: cd server && python server.py
     envVars:
       - key: PORT
