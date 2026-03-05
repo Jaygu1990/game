@@ -5,13 +5,27 @@ services:
     pythonVersion: "3.11"
     rootDir: APP/tcg_ocr_project
     buildCommand: |
-      git submodule update --init --recursive || echo "Submodule update failed, trying direct clone..." &&
-      if [ ! -d "PaddleOCR" ] && [ ! -d "APP/tcg_ocr_project/PaddleOCR" ]; then 
-        echo "Cloning PaddleOCR repository..." && 
-        git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git APP/tcg_ocr_project/PaddleOCR || 
-        git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git PaddleOCR || 
-        echo "Failed to clone PaddleOCR"; 
+      echo "=== 开始构建 ===" &&
+      echo "当前目录: $(pwd)" &&
+      echo "检查 PaddleOCR 目录..." &&
+      if [ -d "APP/tcg_ocr_project/PaddleOCR" ]; then
+        echo "PaddleOCR 目录存在，检查内容..." &&
+        ls -la APP/tcg_ocr_project/PaddleOCR | head -20 &&
+        if [ ! -d "APP/tcg_ocr_project/PaddleOCR/ppocr" ]; then
+          echo "PaddleOCR 目录为空，开始克隆..." &&
+          rm -rf APP/tcg_ocr_project/PaddleOCR &&
+          git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git APP/tcg_ocr_project/PaddleOCR &&
+          echo "克隆完成，验证..." &&
+          ls -la APP/tcg_ocr_project/PaddleOCR/ppocr | head -10
+        else
+          echo "PaddleOCR 目录已有内容"
+        fi
+      else
+        echo "PaddleOCR 目录不存在，开始克隆..." &&
+        git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git APP/tcg_ocr_project/PaddleOCR &&
+        echo "克隆完成"
       fi &&
+      echo "=== 安装依赖 ===" &&
       cd server && pip install -r requirements_server.txt
     startCommand: cd server && python server.py
     envVars:
