@@ -27,71 +27,17 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# 添加PaddleOCR路径
-PROJECT_ROOT = Path(__file__).parent.parent  # server文件夹的父目录
-PADDLEOCR_DIR = PROJECT_ROOT / 'PaddleOCR'
-
-# 初始化日志（用于调试）
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger_temp = logging.getLogger(__name__)
-
-if PADDLEOCR_DIR.exists():
-    sys.path.insert(0, str(PADDLEOCR_DIR))
-    logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
-    
-    # 验证ppocr模块是否存在
-    ppocr_path = PADDLEOCR_DIR / 'ppocr'
-    if ppocr_path.exists():
-        logger_temp.info(f"✅ ppocr目录存在: {ppocr_path}")
-        modeling_path = ppocr_path / 'modeling'
-        if modeling_path.exists():
-            logger_temp.info(f"✅ ppocr.modeling目录存在: {modeling_path}")
-        else:
-            logger_temp.error(f"❌ ppocr.modeling目录不存在: {modeling_path}")
-    else:
-        logger_temp.error(f"❌ ppocr目录不存在: {ppocr_path}")
-        logger_temp.info(f"   PaddleOCR目录内容: {list(PADDLEOCR_DIR.iterdir())[:10]}")
-else:
-    # 如果本地没有PaddleOCR目录，尝试添加paddleocr包的路径
-    logger_temp.info(f"⚠️  本地PaddleOCR目录不存在: {PADDLEOCR_DIR}")
-    try:
-        import paddleocr
-        import os
-        paddleocr_path = os.path.dirname(paddleocr.__file__)
-        logger_temp.info(f"   找到paddleocr包路径: {paddleocr_path}")
-        
-        # 检查ppocr目录是否存在
-        ppocr_dir = os.path.join(paddleocr_path, 'ppocr')
-        logger_temp.info(f"   检查ppocr目录: {ppocr_dir}, 存在: {os.path.exists(ppocr_dir)}")
-        
-        if os.path.exists(ppocr_dir):
-            # 检查ppocr.modeling是否存在
-            modeling_dir = os.path.join(ppocr_dir, 'modeling')
-            logger_temp.info(f"   检查ppocr.modeling目录: {modeling_dir}, 存在: {os.path.exists(modeling_dir)}")
-            
-            if os.path.exists(modeling_dir):
-                # 将paddleocr包的目录添加到路径，这样可以直接导入ppocr
-                sys.path.insert(0, paddleocr_path)
-                logger_temp.info(f"✅ 已添加paddleocr路径到sys.path: {paddleocr_path}")
-            else:
-                logger_temp.error(f"❌ ppocr.modeling目录不存在，需要完整的PaddleOCR源码")
-        else:
-            logger_temp.error(f"❌ ppocr目录不存在")
-    except (ImportError, AttributeError) as e:
-        logger_temp.error(f"❌ 无法导入paddleocr: {e}")
-        # 如果paddleocr未安装或无法导入，继续执行（会在导入ppocr时失败）
-        pass
+# 项目根目录（server 文件夹的父目录）
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # 注意：使用numpy 2.0以兼容用numpy 2.0训练的模型文件
 # 不再需要兼容性修复，因为环境已升级到numpy 2.0
 
 import paddle
-from ppocr.modeling.architectures import build_model
-from ppocr.postprocess import build_post_process
-from ppocr.data import create_operators, transform
+import paddleocr as paddleocr_pkg
+from paddleocr.ppocr.modeling.architectures import build_model
+from paddleocr.ppocr.postprocess import build_post_process
+from paddleocr.ppocr.data import create_operators, transform
 import yaml
 from ultralytics import YOLO
 
@@ -272,12 +218,22 @@ def load_models():
         with open(OCR_CONFIG_FILE, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
         
-        # 修复字符字典配置
-        en_dict_path = PROJECT_ROOT / 'PaddleOCR' / 'ppocr' / 'utils' / 'en_dict.txt'
-        if en_dict_path.exists():
-            config['Global']['character_dict_path'] = str(en_dict_path)
-            config['Global']['use_space_char'] = True
-            logger.info(f"✅ 使用字符字典: {en_dict_path}")
+        # 修复字符字典配置：优先使用 pip 安装的 paddleocr 内置字典，其次使用本地 PaddleOCR 源码
+        en_dict_candidates = []
+        try:
+            import os
+            paddleocr_root = Path(os.path.dirname(paddleocr_pkg.__file__))
+            en_dict_candidates.append(paddleocr_root / 'ppocr' / 'utils' / 'en_dict.txt')
+        except Exception:
+            pass
+        en_dict_candidates.append(PROJECT_ROOT / 'PaddleOCR' / 'ppocr' / 'utils' / 'en_dict.txt')
+
+        for en_dict_path in en_dict_candidates:
+            if en_dict_path.exists():
+                config['Global']['character_dict_path'] = str(en_dict_path)
+                config['Global']['use_space_char'] = True
+                logger.info(f"✅ 使用字符字典: {en_dict_path}")
+                break
         
         # 设置设备（Render通常没有GPU，使用CPU）
         use_gpu = os.getenv('USE_GPU', 'false').lower() == 'true'
