@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: tcg-ocr-api
+    env: python
+    buildCommand: cd server && pip install -r requirements_server.txt
+    startCommand: cd server && python server.py
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: MAX_WORKERS
+        value: 4
+      - key: MAX_QUEUE_SIZE
+        value: 100
+      - key: REQUEST_TIMEOUT
+        value: 60
+      - key: QUEUE_WAIT_TIMEOUT
+        value: 300
+      - key: USE_GPU
+        value: false
+      - key: UVICORN_WORKERS
+        value: 1

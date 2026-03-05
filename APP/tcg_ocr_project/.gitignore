@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# 日志
+*.log
+server_start.log
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+
+# 模型文件（如果太大，可以不上传，通过其他方式部署）
+# 取消注释下面这行，如果模型文件太大不想上传到Git
+# models/
+# data/ocr_train/code/models/
+
+# 数据文件（通常很大，不需要上传）
+data/raw/
+*.zip
+*.tar.gz
+
+# 测试输出
+test_output/
+output/
+
+# 环境变量
+.env
+.env.local
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# 系统文件
+Thumbs.db
+desktop.ini

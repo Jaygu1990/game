@@ -1,0 +1,13 @@
+# 如果重新训练模型使用numpy 1.x，使用此requirements文件
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+numpy<2.0.0
+paddlepaddle==2.6.2
+opencv-python>=4.8.0,<4.9.0
+pyyaml==6.0.1
+ultralytics==8.1.0
+pillow==10.1.0
+shapely>=1.8.0
+# 注意：如果重新训练模型使用numpy 1.x，使用此requirements文件
+# 部署到Render时，将此文件重命名为 requirements_server.txt
