@@ -8,37 +8,41 @@ services:
       set -e &&
       echo "=== 开始构建 ===" &&
       echo "当前目录: $(pwd)" &&
-      echo "检查 PaddleOCR 目录..." &&
-      if [ -d "APP/tcg_ocr_project/PaddleOCR" ]; then
+      echo "当前目录内容: $(ls -la | head -10)" &&
+      echo "=== 处理 PaddleOCR ===" &&
+      PADDLEOCR_DIR="APP/tcg_ocr_project/PaddleOCR" &&
+      echo "检查 PaddleOCR 目录: $PADDLEOCR_DIR" &&
+      if [ -d "$PADDLEOCR_DIR" ]; then
         echo "PaddleOCR 目录存在，检查内容..." &&
-        if [ -d "APP/tcg_ocr_project/PaddleOCR/ppocr" ] && [ -d "APP/tcg_ocr_project/PaddleOCR/ppocr/modeling" ]; then
+        CONTENT_COUNT=$(find "$PADDLEOCR_DIR" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l) &&
+        echo "目录内容数量: $CONTENT_COUNT" &&
+        if [ "$CONTENT_COUNT" -eq 0 ]; then
+          echo "⚠️  PaddleOCR 目录为空，删除并重新克隆..." &&
+          rm -rf "$PADDLEOCR_DIR"
+        elif [ ! -d "$PADDLEOCR_DIR/ppocr/modeling" ]; then
+          echo "⚠️  PaddleOCR 目录不完整（缺少ppocr.modeling），删除并重新克隆..." &&
+          rm -rf "$PADDLEOCR_DIR"
+        else
           echo "✅ PaddleOCR 目录已有完整内容"
-        else
-          echo "⚠️  PaddleOCR 目录不完整，删除并重新克隆..." &&
-          rm -rf APP/tcg_ocr_project/PaddleOCR &&
-          echo "开始克隆 PaddleOCR..." &&
-          git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git APP/tcg_ocr_project/PaddleOCR &&
-          echo "克隆完成，验证..." &&
-          if [ -d "APP/tcg_ocr_project/PaddleOCR/ppocr/modeling" ]; then
-            echo "✅ PaddleOCR 克隆成功，ppocr.modeling 存在"
-          else
-            echo "❌ PaddleOCR 克隆失败，ppocr.modeling 不存在"
-            exit 1
-          fi
-        fi
-      else
-        echo "PaddleOCR 目录不存在，开始克隆..." &&
-        git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git APP/tcg_ocr_project/PaddleOCR &&
-        echo "克隆完成，验证..." &&
-        if [ -d "APP/tcg_ocr_project/PaddleOCR/ppocr/modeling" ]; then
-          echo "✅ PaddleOCR 克隆成功"
-        else
-          echo "❌ PaddleOCR 克隆失败"
-          exit 1
         fi
       fi &&
+      if [ ! -d "$PADDLEOCR_DIR" ] || [ ! -d "$PADDLEOCR_DIR/ppocr/modeling" ]; then
+        echo "开始克隆 PaddleOCR..." &&
+        cd APP/tcg_ocr_project &&
+        git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git PaddleOCR &&
+        echo "克隆完成，验证..." &&
+        if [ -d "PaddleOCR/ppocr/modeling" ]; then
+          echo "✅ PaddleOCR 克隆成功，ppocr.modeling 存在" &&
+          echo "验证目录内容: $(ls -la PaddleOCR/ppocr | head -5)"
+        else
+          echo "❌ PaddleOCR 克隆失败，ppocr.modeling 不存在" &&
+          echo "PaddleOCR目录内容: $(ls -la PaddleOCR | head -10)" &&
+          exit 1
+        fi &&
+        cd ../..
+      fi &&
       echo "=== 安装依赖 ===" &&
-      cd server && pip install -r requirements_server.txt
+      cd APP/tcg_ocr_project/server && pip install -r requirements_server.txt
     startCommand: cd server && python server.py
     envVars:
       - key: PORT
