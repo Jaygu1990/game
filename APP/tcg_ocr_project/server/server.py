@@ -30,11 +30,60 @@ if sys.platform == 'win32':
 # 项目根目录（server 文件夹的父目录）
 PROJECT_ROOT = Path(__file__).parent.parent
 
+# 初始化日志（用于调试）
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger_temp = logging.getLogger(__name__)
+
+# 添加PaddleOCR路径（确保ppocr模块可以被导入）
+PADDLEOCR_DIR = PROJECT_ROOT / 'PaddleOCR'
+if PADDLEOCR_DIR.exists() and (PADDLEOCR_DIR / 'ppocr').exists():
+    sys.path.insert(0, str(PADDLEOCR_DIR))
+    logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
+else:
+    # 尝试从paddleocr包中找到ppocr模块
+    try:
+        import paddleocr
+        import os
+        paddleocr_path = os.path.dirname(paddleocr.__file__)
+        logger_temp.info(f"   找到paddleocr包路径: {paddleocr_path}")
+        
+        # 检查ppocr目录是否存在
+        ppocr_dir = os.path.join(paddleocr_path, 'ppocr')
+        logger_temp.info(f"   检查ppocr目录: {ppocr_dir}, 存在: {os.path.exists(ppocr_dir)}")
+        
+        if os.path.exists(ppocr_dir):
+            # 检查ppocr.modeling是否存在
+            modeling_dir = os.path.join(ppocr_dir, 'modeling')
+            logger_temp.info(f"   检查ppocr.modeling目录: {modeling_dir}, 存在: {os.path.exists(modeling_dir)}")
+            
+            if os.path.exists(modeling_dir):
+                # 将paddleocr包的目录添加到路径
+                sys.path.insert(0, paddleocr_path)
+                logger_temp.info(f"✅ 已添加paddleocr路径: {paddleocr_path}")
+            else:
+                logger_temp.error(f"❌ ppocr.modeling目录不存在: {modeling_dir}")
+                # 尝试添加site-packages的父目录
+                site_packages_parent = os.path.dirname(paddleocr_path)
+                sys.path.insert(0, site_packages_parent)
+                logger_temp.info(f"   尝试添加site-packages父目录: {site_packages_parent}")
+        else:
+            logger_temp.error(f"❌ ppocr目录不存在: {ppocr_dir}")
+            # 尝试添加site-packages的父目录
+            site_packages_parent = os.path.dirname(paddleocr_path)
+            sys.path.insert(0, site_packages_parent)
+            logger_temp.info(f"   尝试添加site-packages父目录: {site_packages_parent}")
+    except Exception as e:
+        logger_temp.error(f"❌ 无法设置paddleocr路径: {e}")
+        import traceback
+        logger_temp.error(traceback.format_exc())
+
 # 注意：使用numpy 2.0以兼容用numpy 2.0训练的模型文件
 # 不再需要兼容性修复，因为环境已升级到numpy 2.0
 
 import paddle
-import paddleocr  # 仅用于获取安装路径
 from ppocr.modeling.architectures import build_model
 from ppocr.postprocess import build_post_process
 from ppocr.data import create_operators, transform
