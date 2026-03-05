@@ -34,10 +34,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # 不再需要兼容性修复，因为环境已升级到numpy 2.0
 
 import paddle
-import paddleocr as paddleocr_pkg
-from paddleocr.ppocr.modeling.architectures import build_model
-from paddleocr.ppocr.postprocess import build_post_process
-from paddleocr.ppocr.data import create_operators, transform
+import paddleocr  # 仅用于获取安装路径
+from ppocr.modeling.architectures import build_model
+from ppocr.postprocess import build_post_process
+from ppocr.data import create_operators, transform
 import yaml
 from ultralytics import YOLO
 
@@ -218,22 +218,19 @@ def load_models():
         with open(OCR_CONFIG_FILE, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
         
-        # 修复字符字典配置：优先使用 pip 安装的 paddleocr 内置字典，其次使用本地 PaddleOCR 源码
-        en_dict_candidates = []
+        # 修复字符字典配置：优先使用 pip 安装的 paddleocr 内置字典
         try:
             import os
-            paddleocr_root = Path(os.path.dirname(paddleocr_pkg.__file__))
-            en_dict_candidates.append(paddleocr_root / 'ppocr' / 'utils' / 'en_dict.txt')
-        except Exception:
-            pass
-        en_dict_candidates.append(PROJECT_ROOT / 'PaddleOCR' / 'ppocr' / 'utils' / 'en_dict.txt')
-
-        for en_dict_path in en_dict_candidates:
+            paddleocr_root = Path(os.path.dirname(paddleocr.__file__))
+            en_dict_path = paddleocr_root / 'ppocr' / 'utils' / 'en_dict.txt'
             if en_dict_path.exists():
                 config['Global']['character_dict_path'] = str(en_dict_path)
                 config['Global']['use_space_char'] = True
                 logger.info(f"✅ 使用字符字典: {en_dict_path}")
-                break
+            else:
+                logger.warning(f"⚠️ 未找到字符字典文件: {en_dict_path}")
+        except Exception as dict_err:
+            logger.warning(f"⚠️ 设置字符字典路径时出错: {dict_err}")
         
         # 设置设备（Render通常没有GPU，使用CPU）
         use_gpu = os.getenv('USE_GPU', 'false').lower() == 'true'
