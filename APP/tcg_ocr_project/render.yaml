@@ -2,6 +2,7 @@ services:
   - type: web
     name: tcg-ocr-api
     env: python
+    rootDir: APP/tcg_ocr_project
     buildCommand: cd server && pip install -r requirements_server.txt
     startCommand: cd server && python server.py
     envVars:
