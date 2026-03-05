@@ -41,12 +41,20 @@ logger_temp = logging.getLogger(__name__)
 PADDLEOCR_DIR = PROJECT_ROOT / 'PaddleOCR'
 ppocr_found = False
 
+logger_temp.info("=" * 70)
+logger_temp.info("开始检查 ppocr 模块路径...")
+logger_temp.info(f"项目根目录: {PROJECT_ROOT}")
+logger_temp.info(f"PaddleOCR目录路径: {PADDLEOCR_DIR}")
+logger_temp.info(f"PaddleOCR目录存在: {PADDLEOCR_DIR.exists()}")
+
 # 优先使用本地PaddleOCR目录
 if PADDLEOCR_DIR.exists():
     ppocr_local = PADDLEOCR_DIR / 'ppocr'
     modeling_local = ppocr_local / 'modeling'
     logger_temp.info(f"检查本地PaddleOCR目录: {PADDLEOCR_DIR}")
+    logger_temp.info(f"  ppocr目录路径: {ppocr_local}")
     logger_temp.info(f"  ppocr目录存在: {ppocr_local.exists()}")
+    logger_temp.info(f"  ppocr.modeling目录路径: {modeling_local}")
     logger_temp.info(f"  ppocr.modeling目录存在: {modeling_local.exists()}")
     
     if modeling_local.exists():
@@ -57,10 +65,17 @@ if PADDLEOCR_DIR.exists():
         logger_temp.warning(f"⚠️  本地PaddleOCR目录存在但ppocr.modeling不存在")
         # 列出目录内容以便调试
         try:
-            contents = list(PADDLEOCR_DIR.iterdir())[:10]
-            logger_temp.info(f"  PaddleOCR目录内容: {[str(c.name) for c in contents]}")
+            contents = list(PADDLEOCR_DIR.iterdir())[:20]
+            logger_temp.info(f"  PaddleOCR目录内容（前20项）: {[str(c.name) for c in contents]}")
+            if ppocr_local.exists():
+                ppocr_contents = list(ppocr_local.iterdir())[:20]
+                logger_temp.info(f"  ppocr目录内容（前20项）: {[str(c.name) for c in ppocr_contents]}")
         except Exception as e:
             logger_temp.error(f"  无法列出目录内容: {e}")
+            import traceback
+            logger_temp.error(traceback.format_exc())
+else:
+    logger_temp.warning(f"⚠️  本地PaddleOCR目录不存在: {PADDLEOCR_DIR}")
 
 # 如果本地没有，尝试从paddleocr包中找到
 if not ppocr_found:
