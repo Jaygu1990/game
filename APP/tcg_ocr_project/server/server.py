@@ -30,22 +30,45 @@ if sys.platform == 'win32':
 # 添加PaddleOCR路径
 PROJECT_ROOT = Path(__file__).parent.parent  # server文件夹的父目录
 PADDLEOCR_DIR = PROJECT_ROOT / 'PaddleOCR'
+
+# 初始化日志（用于调试）
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger_temp = logging.getLogger(__name__)
+
 if PADDLEOCR_DIR.exists():
     sys.path.insert(0, str(PADDLEOCR_DIR))
+    logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
 else:
     # 如果本地没有PaddleOCR目录，尝试添加paddleocr包的路径
-    # paddleocr包安装后，ppocr模块在 site-packages/paddleocr/ppocr/ 目录下
-    # 需要将 paddleocr 包的目录添加到路径，这样可以直接导入 ppocr
+    logger_temp.info(f"⚠️  本地PaddleOCR目录不存在: {PADDLEOCR_DIR}")
     try:
         import paddleocr
         import os
         paddleocr_path = os.path.dirname(paddleocr.__file__)
+        logger_temp.info(f"   找到paddleocr包路径: {paddleocr_path}")
+        
         # 检查ppocr目录是否存在
         ppocr_dir = os.path.join(paddleocr_path, 'ppocr')
+        logger_temp.info(f"   检查ppocr目录: {ppocr_dir}, 存在: {os.path.exists(ppocr_dir)}")
+        
         if os.path.exists(ppocr_dir):
-            # 将paddleocr包的目录添加到路径，这样可以直接导入ppocr
-            sys.path.insert(0, paddleocr_path)
-    except (ImportError, AttributeError):
+            # 检查ppocr.modeling是否存在
+            modeling_dir = os.path.join(ppocr_dir, 'modeling')
+            logger_temp.info(f"   检查ppocr.modeling目录: {modeling_dir}, 存在: {os.path.exists(modeling_dir)}")
+            
+            if os.path.exists(modeling_dir):
+                # 将paddleocr包的目录添加到路径，这样可以直接导入ppocr
+                sys.path.insert(0, paddleocr_path)
+                logger_temp.info(f"✅ 已添加paddleocr路径到sys.path: {paddleocr_path}")
+            else:
+                logger_temp.error(f"❌ ppocr.modeling目录不存在，需要完整的PaddleOCR源码")
+        else:
+            logger_temp.error(f"❌ ppocr目录不存在")
+    except (ImportError, AttributeError) as e:
+        logger_temp.error(f"❌ 无法导入paddleocr: {e}")
         # 如果paddleocr未安装或无法导入，继续执行（会在导入ppocr时失败）
         pass
 

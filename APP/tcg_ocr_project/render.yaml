@@ -4,7 +4,9 @@ services:
     env: python
     pythonVersion: "3.11"
     rootDir: APP/tcg_ocr_project
-    buildCommand: cd server && pip install -r requirements_server.txt
+    buildCommand: |
+      cd server && pip install -r requirements_server.txt
+      cd .. && if [ ! -d "PaddleOCR" ]; then echo "Cloning PaddleOCR repository..." && git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git || echo "Failed to clone PaddleOCR"; fi
     startCommand: cd server && python server.py
     envVars:
       - key: PORT
