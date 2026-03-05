@@ -39,46 +39,69 @@ logger_temp = logging.getLogger(__name__)
 
 # 添加PaddleOCR路径（确保ppocr模块可以被导入）
 PADDLEOCR_DIR = PROJECT_ROOT / 'PaddleOCR'
-if PADDLEOCR_DIR.exists() and (PADDLEOCR_DIR / 'ppocr').exists():
-    sys.path.insert(0, str(PADDLEOCR_DIR))
-    logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
-else:
-    # 尝试从paddleocr包中找到ppocr模块
+ppocr_found = False
+
+# 优先使用本地PaddleOCR目录
+if PADDLEOCR_DIR.exists():
+    ppocr_local = PADDLEOCR_DIR / 'ppocr'
+    modeling_local = ppocr_local / 'modeling'
+    logger_temp.info(f"检查本地PaddleOCR目录: {PADDLEOCR_DIR}")
+    logger_temp.info(f"  ppocr目录存在: {ppocr_local.exists()}")
+    logger_temp.info(f"  ppocr.modeling目录存在: {modeling_local.exists()}")
+    
+    if modeling_local.exists():
+        sys.path.insert(0, str(PADDLEOCR_DIR))
+        logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
+        ppocr_found = True
+    else:
+        logger_temp.warning(f"⚠️  本地PaddleOCR目录存在但ppocr.modeling不存在")
+        # 列出目录内容以便调试
+        try:
+            contents = list(PADDLEOCR_DIR.iterdir())[:10]
+            logger_temp.info(f"  PaddleOCR目录内容: {[str(c.name) for c in contents]}")
+        except Exception as e:
+            logger_temp.error(f"  无法列出目录内容: {e}")
+
+# 如果本地没有，尝试从paddleocr包中找到
+if not ppocr_found:
+    logger_temp.info("尝试从paddleocr包中查找ppocr模块...")
     try:
         import paddleocr
         import os
         paddleocr_path = os.path.dirname(paddleocr.__file__)
-        logger_temp.info(f"   找到paddleocr包路径: {paddleocr_path}")
+        logger_temp.info(f"  找到paddleocr包路径: {paddleocr_path}")
         
         # 检查ppocr目录是否存在
         ppocr_dir = os.path.join(paddleocr_path, 'ppocr')
-        logger_temp.info(f"   检查ppocr目录: {ppocr_dir}, 存在: {os.path.exists(ppocr_dir)}")
+        logger_temp.info(f"  检查ppocr目录: {ppocr_dir}, 存在: {os.path.exists(ppocr_dir)}")
         
         if os.path.exists(ppocr_dir):
             # 检查ppocr.modeling是否存在
             modeling_dir = os.path.join(ppocr_dir, 'modeling')
-            logger_temp.info(f"   检查ppocr.modeling目录: {modeling_dir}, 存在: {os.path.exists(modeling_dir)}")
+            logger_temp.info(f"  检查ppocr.modeling目录: {modeling_dir}, 存在: {os.path.exists(modeling_dir)}")
             
             if os.path.exists(modeling_dir):
                 # 将paddleocr包的目录添加到路径
                 sys.path.insert(0, paddleocr_path)
                 logger_temp.info(f"✅ 已添加paddleocr路径: {paddleocr_path}")
+                ppocr_found = True
             else:
                 logger_temp.error(f"❌ ppocr.modeling目录不存在: {modeling_dir}")
-                # 尝试添加site-packages的父目录
-                site_packages_parent = os.path.dirname(paddleocr_path)
-                sys.path.insert(0, site_packages_parent)
-                logger_temp.info(f"   尝试添加site-packages父目录: {site_packages_parent}")
         else:
             logger_temp.error(f"❌ ppocr目录不存在: {ppocr_dir}")
-            # 尝试添加site-packages的父目录
-            site_packages_parent = os.path.dirname(paddleocr_path)
-            sys.path.insert(0, site_packages_parent)
-            logger_temp.info(f"   尝试添加site-packages父目录: {site_packages_parent}")
     except Exception as e:
         logger_temp.error(f"❌ 无法设置paddleocr路径: {e}")
         import traceback
         logger_temp.error(traceback.format_exc())
+
+# 如果都找不到，给出明确的错误提示
+if not ppocr_found:
+    logger_temp.error("=" * 70)
+    logger_temp.error("❌ 无法找到ppocr.modeling模块！")
+    logger_temp.error("   请确保：")
+    logger_temp.error("   1. PaddleOCR源码目录已正确克隆到项目根目录")
+    logger_temp.error("   2. 或者paddleocr包包含完整的ppocr模块")
+    logger_temp.error("=" * 70)
 
 # 注意：使用numpy 2.0以兼容用numpy 2.0训练的模型文件
 # 不再需要兼容性修复，因为环境已升级到numpy 2.0
