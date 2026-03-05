@@ -1,0 +1,7 @@
+# 这个文件是为了Render自动检测Python项目
+# 实际的依赖在 server/requirements_server.txt
+# Render会使用 render.yaml 中的 buildCommand
+
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
