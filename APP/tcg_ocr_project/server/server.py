@@ -637,8 +637,8 @@ async def startup_event():
 
 @app.get("/", response_model=HealthResponse)
 async def root():
-    """健康检查"""
-    await ensure_models_loaded()  # 确保模型已加载（延迟加载）
+    """健康检查（不加载模型，快速响应）"""
+    # 不加载模型，避免 Render 健康检查超时
     queue_size = request_queue.qsize()
     stats['current_queue_size'] = queue_size
     return {
@@ -652,8 +652,8 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse)
 async def health():
-    """健康检查（详细）"""
-    await ensure_models_loaded()  # 确保模型已加载（延迟加载）
+    """健康检查（不加载模型，快速响应）"""
+    # 不加载模型，避免 Render 健康检查超时
     queue_size = request_queue.qsize()
     stats['current_queue_size'] = queue_size
     return {
