@@ -32,6 +32,22 @@ PROJECT_ROOT = Path(__file__).parent.parent  # server文件夹的父目录
 PADDLEOCR_DIR = PROJECT_ROOT / 'PaddleOCR'
 if PADDLEOCR_DIR.exists():
     sys.path.insert(0, str(PADDLEOCR_DIR))
+else:
+    # 如果本地没有PaddleOCR目录，尝试添加paddleocr包的路径
+    # paddleocr包安装后，ppocr模块在 site-packages/paddleocr/ppocr/ 目录下
+    # 需要将 paddleocr 包的目录添加到路径，这样可以直接导入 ppocr
+    try:
+        import paddleocr
+        import os
+        paddleocr_path = os.path.dirname(paddleocr.__file__)
+        # 检查ppocr目录是否存在
+        ppocr_dir = os.path.join(paddleocr_path, 'ppocr')
+        if os.path.exists(ppocr_dir):
+            # 将paddleocr包的目录添加到路径，这样可以直接导入ppocr
+            sys.path.insert(0, paddleocr_path)
+    except (ImportError, AttributeError):
+        # 如果paddleocr未安装或无法导入，继续执行（会在导入ppocr时失败）
+        pass
 
 # 注意：使用numpy 2.0以兼容用numpy 2.0训练的模型文件
 # 不再需要兼容性修复，因为环境已升级到numpy 2.0
