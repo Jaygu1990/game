@@ -1,0 +1,3 @@
+[submodule "APP/tcg_ocr_project/APP/tcg_ocr_project/PaddleOCR"]
+	path = APP/tcg_ocr_project/APP/tcg_ocr_project/PaddleOCR
+	url = https://github.com/PaddlePaddle/PaddleOCR.git
