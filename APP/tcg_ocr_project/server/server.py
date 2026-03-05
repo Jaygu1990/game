@@ -57,23 +57,49 @@ if PADDLEOCR_DIR.exists():
     logger_temp.info(f"  ppocr.modeling目录路径: {modeling_local}")
     logger_temp.info(f"  ppocr.modeling目录存在: {modeling_local.exists()}")
     
-    if modeling_local.exists():
-        sys.path.insert(0, str(PADDLEOCR_DIR))
-        logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
-        ppocr_found = True
-    else:
-        logger_temp.warning(f"⚠️  本地PaddleOCR目录存在但ppocr.modeling不存在")
-        # 列出目录内容以便调试
-        try:
-            contents = list(PADDLEOCR_DIR.iterdir())[:20]
-            logger_temp.info(f"  PaddleOCR目录内容（前20项）: {[str(c.name) for c in contents]}")
+    # 检查目录是否为空
+    try:
+        contents = list(PADDLEOCR_DIR.iterdir())
+        logger_temp.info(f"  PaddleOCR目录内容数量: {len(contents)}")
+        if len(contents) == 0:
+            logger_temp.warning(f"⚠️  PaddleOCR目录为空，尝试在启动时克隆...")
+            # 尝试在启动时克隆（作为最后的补救措施）
+            import subprocess
+            import shutil
+            try:
+                # 删除空目录
+                if PADDLEOCR_DIR.exists():
+                    shutil.rmtree(PADDLEOCR_DIR)
+                logger_temp.info("  开始克隆 PaddleOCR...")
+                result = subprocess.run(
+                    ['git', 'clone', '--depth', '1', 'https://github.com/PaddlePaddle/PaddleOCR.git', str(PADDLEOCR_DIR)],
+                    cwd=str(PROJECT_ROOT),
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                if result.returncode == 0 and modeling_local.exists():
+                    logger_temp.info("✅ 启动时克隆 PaddleOCR 成功")
+                    sys.path.insert(0, str(PADDLEOCR_DIR))
+                    ppocr_found = True
+                else:
+                    logger_temp.error(f"❌ 启动时克隆失败: {result.stderr}")
+            except Exception as e:
+                logger_temp.error(f"❌ 启动时克隆异常: {e}")
+        elif modeling_local.exists():
+            sys.path.insert(0, str(PADDLEOCR_DIR))
+            logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
+            ppocr_found = True
+        else:
+            logger_temp.warning(f"⚠️  本地PaddleOCR目录存在但ppocr.modeling不存在")
+            logger_temp.info(f"  PaddleOCR目录内容（前20项）: {[str(c.name) for c in contents[:20]]}")
             if ppocr_local.exists():
                 ppocr_contents = list(ppocr_local.iterdir())[:20]
                 logger_temp.info(f"  ppocr目录内容（前20项）: {[str(c.name) for c in ppocr_contents]}")
-        except Exception as e:
-            logger_temp.error(f"  无法列出目录内容: {e}")
-            import traceback
-            logger_temp.error(traceback.format_exc())
+    except Exception as e:
+        logger_temp.error(f"  无法列出目录内容: {e}")
+        import traceback
+        logger_temp.error(traceback.format_exc())
 else:
     logger_temp.warning(f"⚠️  本地PaddleOCR目录不存在: {PADDLEOCR_DIR}")
 
