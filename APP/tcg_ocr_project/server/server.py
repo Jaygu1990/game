@@ -177,12 +177,25 @@ if not ppocr_found:
 # 注意：使用numpy 2.0以兼容用numpy 2.0训练的模型文件
 # 不再需要兼容性修复，因为环境已升级到numpy 2.0
 
+logger_temp.info("开始导入重型库...")
+logger_temp.info("  导入 paddle...")
 import paddle
+logger_temp.info("  ✅ paddle 导入成功")
+
+logger_temp.info("  导入 ppocr 模块...")
 from ppocr.modeling.architectures import build_model
 from ppocr.postprocess import build_post_process
 from ppocr.data import create_operators, transform
+logger_temp.info("  ✅ ppocr 模块导入成功")
+
+logger_temp.info("  导入 yaml...")
 import yaml
+logger_temp.info("  ✅ yaml 导入成功")
+
+logger_temp.info("  导入 ultralytics...")
 from ultralytics import YOLO
+logger_temp.info("  ✅ ultralytics 导入成功")
+logger_temp.info("所有库导入完成")
 
 # ===== 配置 =====
 # 日志已在上面初始化，这里复用
