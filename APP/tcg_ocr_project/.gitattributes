@@ -1,0 +1,1 @@
+APP/tcg_ocr_project/PaddleOCR/** filter=lfs diff=lfs merge=lfs -text
