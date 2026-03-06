@@ -192,14 +192,22 @@ def _import_heavy_libraries():
     """延迟导入重型库（在需要时才导入）"""
     global paddle, build_model, build_post_process, create_operators, transform, yaml, YOLO
     
-    if paddle is None:
-        logger.info("开始导入重型库...")
-        logger.info("  导入 paddle...")
+    if paddle is not None:
+        # 已经导入过了
+        return
+    
+    logger.info("开始导入重型库...")
+    start_time = time.time()
+    
+    try:
+        logger.info("  导入 paddle（这可能需要 30-60 秒，请耐心等待）...")
         import paddle as _paddle
         paddle = _paddle
-        logger.info("  ✅ paddle 导入成功")
+        elapsed = time.time() - start_time
+        logger.info(f"  ✅ paddle 导入成功（耗时 {elapsed:.1f} 秒）")
         
         logger.info("  导入 ppocr 模块...")
+        ppocr_start = time.time()
         from ppocr.modeling.architectures import build_model as _build_model
         from ppocr.postprocess import build_post_process as _build_post_process
         from ppocr.data import create_operators as _create_operators, transform as _transform
@@ -207,18 +215,31 @@ def _import_heavy_libraries():
         build_post_process = _build_post_process
         create_operators = _create_operators
         transform = _transform
-        logger.info("  ✅ ppocr 模块导入成功")
+        ppocr_elapsed = time.time() - ppocr_start
+        logger.info(f"  ✅ ppocr 模块导入成功（耗时 {ppocr_elapsed:.1f} 秒）")
         
         logger.info("  导入 yaml...")
+        yaml_start = time.time()
         import yaml as _yaml
         yaml = _yaml
-        logger.info("  ✅ yaml 导入成功")
+        yaml_elapsed = time.time() - yaml_start
+        logger.info(f"  ✅ yaml 导入成功（耗时 {yaml_elapsed:.1f} 秒）")
         
         logger.info("  导入 ultralytics...")
+        ultralytics_start = time.time()
         from ultralytics import YOLO as _YOLO
         YOLO = _YOLO
-        logger.info("  ✅ ultralytics 导入成功")
-        logger.info("所有库导入完成")
+        ultralytics_elapsed = time.time() - ultralytics_start
+        logger.info(f"  ✅ ultralytics 导入成功（耗时 {ultralytics_elapsed:.1f} 秒）")
+        
+        total_elapsed = time.time() - start_time
+        logger.info(f"所有库导入完成（总耗时 {total_elapsed:.1f} 秒）")
+    except Exception as e:
+        elapsed = time.time() - start_time
+        logger.error(f"❌ 导入重型库失败（耗时 {elapsed:.1f} 秒）: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 # ===== 配置 =====
 # 日志已在上面初始化，这里复用
@@ -665,18 +686,41 @@ async def ensure_models_loaded():
         return
     
     if models_loading:
-        # 如果正在加载，等待完成
+        # 如果正在加载，等待完成（最多等待5分钟）
+        logger.info("模型正在加载中，等待完成...")
+        wait_start = time.time()
+        max_wait_time = 300  # 5分钟
         while models_loading:
-            await asyncio.sleep(0.1)
+            if time.time() - wait_start > max_wait_time:
+                logger.error(f"等待模型加载超时（{max_wait_time}秒）")
+                raise TimeoutError(f"模型加载超时（{max_wait_time}秒）")
+            await asyncio.sleep(0.5)
+            # 每10秒输出一次进度
+            elapsed = time.time() - wait_start
+            if int(elapsed) % 10 == 0 and elapsed > 0:
+                logger.info(f"  仍在等待模型加载...（已等待 {elapsed:.0f} 秒）")
         return
     
     models_loading = True
     try:
         if yolo_model is None or ocr_model is None:
             logger.info("首次请求，开始加载模型...")
-            load_models()
-            models_loaded = True
-            logger.info("✅ 模型加载完成，服务就绪")
+            logger.info("注意：模型加载可能需要 1-3 分钟，请耐心等待...")
+            
+            # 在后台线程中加载模型，避免阻塞事件循环
+            loop = asyncio.get_event_loop()
+            try:
+                # 使用 asyncio.wait_for 设置超时（5分钟）
+                await asyncio.wait_for(
+                    loop.run_in_executor(executor, load_models),
+                    timeout=300.0  # 5分钟超时
+                )
+                models_loaded = True
+                logger.info("✅ 模型加载完成，服务就绪")
+            except asyncio.TimeoutError:
+                logger.error("❌ 模型加载超时（超过5分钟）")
+                models_loading = False
+                raise TimeoutError("模型加载超时（超过5分钟）。请检查模型文件大小和服务器资源。")
     except Exception as e:
         logger.error(f"模型加载失败: {e}")
         models_loading = False
