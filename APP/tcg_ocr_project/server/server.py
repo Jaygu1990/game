@@ -12,6 +12,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
 import tempfile
+import threading
 from typing import Optional, Dict, Tuple
 from contextlib import asynccontextmanager
 import logging
@@ -167,12 +168,34 @@ def _import_heavy_libraries():
         # 1.1 导入 paddle
         logger.info("[1.1/4] 导入 paddle（这可能需要 30-60 秒，请耐心等待）...")
         logger.info("  - 正在导入 paddle 模块...")
+        sys.stdout.flush()  # 强制刷新输出
         paddle_start = time.time()
-        import paddle as _paddle
-        paddle = _paddle
+        
+        # 在导入过程中定期输出进度（每30秒）
+        progress_stop = threading.Event()
+        def log_progress():
+            elapsed = 0
+            while not progress_stop.is_set():
+                time.sleep(30)  # 每30秒输出一次
+                if not progress_stop.is_set():
+                    elapsed += 30
+                    logger.info(f"  ⏳ paddle 导入中...（已等待 {elapsed} 秒，Render Free Plan 可能较慢）")
+                    sys.stdout.flush()
+        
+        progress_thread = threading.Thread(target=log_progress, daemon=True)
+        progress_thread.start()
+        
+        try:
+            import paddle as _paddle
+            paddle = _paddle
+        finally:
+            progress_stop.set()
+            progress_thread.join(timeout=1)
+        
         paddle_elapsed = time.time() - paddle_start
         logger.info(f"  ✅ paddle 导入成功（耗时 {paddle_elapsed:.1f} 秒）")
         logger.info(f"  - paddle 版本: {paddle.__version__ if hasattr(paddle, '__version__') else '未知'}")
+        sys.stdout.flush()
         
         # 1.2 导入 ppocr 模块
         logger.info("[1.2/4] 导入 ppocr 模块...")
