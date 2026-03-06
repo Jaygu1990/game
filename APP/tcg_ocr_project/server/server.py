@@ -177,25 +177,47 @@ if not ppocr_found:
 # 注意：使用numpy 2.0以兼容用numpy 2.0训练的模型文件
 # 不再需要兼容性修复，因为环境已升级到numpy 2.0
 
-logger_temp.info("开始导入重型库...")
-logger_temp.info("  导入 paddle...")
-import paddle
-logger_temp.info("  ✅ paddle 导入成功")
+# 延迟导入重型库（在函数内部导入，避免阻塞服务器启动）
+# 这些库会在 load_models() 函数中导入
+paddle = None
+build_model = None
+build_post_process = None
+create_operators = None
+transform = None
+yaml = None
+YOLO = None
 
-logger_temp.info("  导入 ppocr 模块...")
-from ppocr.modeling.architectures import build_model
-from ppocr.postprocess import build_post_process
-from ppocr.data import create_operators, transform
-logger_temp.info("  ✅ ppocr 模块导入成功")
-
-logger_temp.info("  导入 yaml...")
-import yaml
-logger_temp.info("  ✅ yaml 导入成功")
-
-logger_temp.info("  导入 ultralytics...")
-from ultralytics import YOLO
-logger_temp.info("  ✅ ultralytics 导入成功")
-logger_temp.info("所有库导入完成")
+def _import_heavy_libraries():
+    """延迟导入重型库（在需要时才导入）"""
+    global paddle, build_model, build_post_process, create_operators, transform, yaml, YOLO
+    
+    if paddle is None:
+        logger.info("开始导入重型库...")
+        logger.info("  导入 paddle...")
+        import paddle as _paddle
+        paddle = _paddle
+        logger.info("  ✅ paddle 导入成功")
+        
+        logger.info("  导入 ppocr 模块...")
+        from ppocr.modeling.architectures import build_model as _build_model
+        from ppocr.postprocess import build_post_process as _build_post_process
+        from ppocr.data import create_operators as _create_operators, transform as _transform
+        build_model = _build_model
+        build_post_process = _build_post_process
+        create_operators = _create_operators
+        transform = _transform
+        logger.info("  ✅ ppocr 模块导入成功")
+        
+        logger.info("  导入 yaml...")
+        import yaml as _yaml
+        yaml = _yaml
+        logger.info("  ✅ yaml 导入成功")
+        
+        logger.info("  导入 ultralytics...")
+        from ultralytics import YOLO as _YOLO
+        YOLO = _YOLO
+        logger.info("  ✅ ultralytics 导入成功")
+        logger.info("所有库导入完成")
 
 # ===== 配置 =====
 # 日志已在上面初始化，这里复用
@@ -326,6 +348,9 @@ def load_models():
     """加载YOLO和OCR模型（启动时调用一次）"""
     global yolo_model, ocr_model, post_process_class, eval_ops, config
     
+    # 延迟导入重型库（在需要时才导入）
+    _import_heavy_libraries()
+    
     logger.info("=" * 70)
     logger.info("开始加载模型...")
     logger.info("=" * 70)
@@ -371,19 +396,25 @@ def load_models():
         with open(OCR_CONFIG_FILE, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
         
-        # 修复字符字典配置：优先使用 pip 安装的 paddleocr 内置字典
+        # 修复字符字典配置：优先使用本地 PaddleOCR 源码的字典
+        en_dict_candidates = [
+            PROJECT_ROOT / 'PaddleOCR' / 'ppocr' / 'utils' / 'en_dict.txt',
+        ]
+        # 尝试从paddleocr包中获取
         try:
+            import paddleocr as paddleocr_pkg
             import os
-            paddleocr_root = Path(os.path.dirname(paddleocr.__file__))
-            en_dict_path = paddleocr_root / 'ppocr' / 'utils' / 'en_dict.txt'
+            paddleocr_root = Path(os.path.dirname(paddleocr_pkg.__file__))
+            en_dict_candidates.insert(0, paddleocr_root / 'ppocr' / 'utils' / 'en_dict.txt')
+        except Exception:
+            pass
+        
+        for en_dict_path in en_dict_candidates:
             if en_dict_path.exists():
                 config['Global']['character_dict_path'] = str(en_dict_path)
                 config['Global']['use_space_char'] = True
                 logger.info(f"✅ 使用字符字典: {en_dict_path}")
-            else:
-                logger.warning(f"⚠️ 未找到字符字典文件: {en_dict_path}")
-        except Exception as dict_err:
-            logger.warning(f"⚠️ 设置字符字典路径时出错: {dict_err}")
+                break
         
         # 设置设备（Render通常没有GPU，使用CPU）
         use_gpu = os.getenv('USE_GPU', 'false').lower() == 'true'
