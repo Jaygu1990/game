@@ -718,9 +718,29 @@ async def ocr_endpoint(file: UploadFile = File(...)):
     如果所有worker都在忙，会等待直到有worker空闲（最多等待QUEUE_WAIT_TIMEOUT秒）
     如果队列满，也会等待直到有空位
     """
-    await ensure_models_loaded()  # 确保模型已加载（延迟加载）
-    queue_wait_start = time.time()
     stats['total_requests'] += 1
+    queue_wait_start = time.time()
+    
+    # 确保模型已加载（延迟加载），捕获加载错误
+    try:
+        await ensure_models_loaded()
+    except Exception as e:
+        stats['failed_requests'] += 1
+        logger.error(f"模型加载失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return OCRResponse(
+            success=False,
+            error=f"模型加载失败: {str(e)}。请检查模型文件是否存在，或查看服务器日志。"
+        )
+    
+    # 检查模型是否已加载
+    if yolo_model is None or ocr_model is None:
+        stats['failed_requests'] += 1
+        return OCRResponse(
+            success=False,
+            error="模型未加载。请检查模型文件是否存在。"
+        )
     
     # 读取图片数据
     try:
@@ -808,9 +828,28 @@ async def ocr_direct_endpoint(file: UploadFile = File(...)):
     
     适用于低并发场景或测试
     """
-    # 确保模型已加载（延迟加载）
-    await ensure_models_loaded()
     stats['total_requests'] += 1
+    
+    # 确保模型已加载（延迟加载），捕获加载错误
+    try:
+        await ensure_models_loaded()
+    except Exception as e:
+        stats['failed_requests'] += 1
+        logger.error(f"模型加载失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return OCRResponse(
+            success=False,
+            error=f"模型加载失败: {str(e)}。请检查模型文件是否存在，或查看服务器日志。"
+        )
+    
+    # 检查模型是否已加载
+    if yolo_model is None or ocr_model is None:
+        stats['failed_requests'] += 1
+        return OCRResponse(
+            success=False,
+            error="模型未加载。请检查模型文件是否存在。"
+        )
     
     try:
         image_bytes = await file.read()
@@ -845,6 +884,8 @@ async def ocr_direct_endpoint(file: UploadFile = File(...)):
     except Exception as e:
         stats['failed_requests'] += 1
         logger.error(f"处理请求时出错: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
 
 if __name__ == "__main__":
