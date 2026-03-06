@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 import tempfile
 from typing import Optional, Dict, Tuple
+from contextlib import asynccontextmanager
 import logging
 
 # FastAPI
@@ -270,10 +271,20 @@ stats = {
 }
 
 # ===== FastAPI 应用 =====
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理（启动和关闭）"""
+    # 启动时执行
+    logger.info(f"服务器启动完成，模型将在首次请求时加载")
+    logger.info(f"服务器配置: MAX_WORKERS={MAX_WORKERS}, MAX_QUEUE_SIZE={MAX_QUEUE_SIZE}")
+    yield
+    # 关闭时执行（如果需要清理资源）
+
 app = FastAPI(
     title="TCG OCR API",
     version="1.0.0",
-    description="TCG卡片Code区域OCR识别API服务"
+    description="TCG卡片Code区域OCR识别API服务",
+    lifespan=lifespan
 )
 
 # CORS 配置（允许跨域）
@@ -672,12 +683,6 @@ async def ensure_models_loaded():
         raise
     finally:
         models_loading = False
-
-@app.on_event("startup")
-async def startup_event():
-    """启动事件（不加载模型，避免超时）"""
-    logger.info(f"服务器启动完成，模型将在首次请求时加载")
-    logger.info(f"服务器配置: MAX_WORKERS={MAX_WORKERS}, MAX_QUEUE_SIZE={MAX_QUEUE_SIZE}")
 
 @app.get("/", response_model=HealthResponse)
 async def root():
