@@ -311,10 +311,13 @@ async def lifespan(app: FastAPI):
         startup_start = time.time()
         try:
             logger.info("正在后台线程中加载模型...")
+            logger.info("注意：Render Free Plan 资源有限，模型加载可能需要 5-10 分钟")
+            logger.info("服务器已启动，可以响应请求，但 OCR 功能需等待模型加载完成")
             loop = asyncio.get_event_loop()
+            # 增加超时时间到10分钟（Render Free Plan 可能较慢）
             await asyncio.wait_for(
                 loop.run_in_executor(executor, load_models),
-                timeout=300.0  # 5分钟超时
+                timeout=600.0  # 10分钟超时
             )
             models_loaded = True
             startup_elapsed = time.time() - startup_start
@@ -323,11 +326,11 @@ async def lifespan(app: FastAPI):
             logger.info("=" * 70)
         except asyncio.TimeoutError:
             startup_elapsed = time.time() - startup_start
-            logger.error("=" * 70)
-            logger.error(f"❌ 模型加载超时（超过5分钟，已耗时 {startup_elapsed:.1f} 秒）")
-            logger.error("服务器将继续运行，但模型未加载")
-            logger.error("首次请求时会自动重试加载模型")
-            logger.error("=" * 70)
+            logger.warning("=" * 70)
+            logger.warning(f"⚠️  模型加载超时（超过10分钟，已耗时 {startup_elapsed:.1f} 秒）")
+            logger.warning("服务器将继续运行，但模型未加载")
+            logger.warning("首次 OCR 请求时会自动重试加载模型（无超时限制）")
+            logger.warning("=" * 70)
             models_loaded = False
         except Exception as e:
             startup_elapsed = time.time() - startup_start
@@ -865,23 +868,14 @@ async def ensure_models_loaded():
         logger.info("=" * 70)
         models_loading = True
         try:
-            logger.info("注意：模型加载可能需要 1-3 分钟，请耐心等待...")
+            logger.info("注意：Render Free Plan 资源有限，模型加载可能需要 5-10 分钟，请耐心等待...")
             loop = asyncio.get_event_loop()
-            await asyncio.wait_for(
-                loop.run_in_executor(executor, load_models),
-                timeout=300.0  # 5分钟超时
-            )
+            # 首次请求时加载，无超时限制（让用户等待）
+            await loop.run_in_executor(executor, load_models)
             models_loaded = True
             logger.info("=" * 70)
             logger.info("✅ 模型加载完成，服务就绪")
             logger.info("=" * 70)
-        except asyncio.TimeoutError:
-            logger.error("=" * 70)
-            logger.error("❌ 模型加载超时（超过5分钟）")
-            logger.error("请检查模型文件大小和服务器资源")
-            logger.error("=" * 70)
-            models_loading = False
-            raise TimeoutError("模型加载超时（超过5分钟）。请检查模型文件大小和服务器资源。")
         except Exception as e:
             logger.error("=" * 70)
             logger.error(f"❌ 模型加载失败")
