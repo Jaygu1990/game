@@ -298,48 +298,55 @@ async def lifespan(app: FastAPI):
     logger.info(f"  - REQUEST_TIMEOUT: {REQUEST_TIMEOUT} 秒")
     logger.info(f"  - QUEUE_WAIT_TIMEOUT: {QUEUE_WAIT_TIMEOUT} 秒")
     logger.info("=" * 70)
-    logger.info("开始加载模型（这可能需要 1-3 分钟，请耐心等待）...")
+    logger.info("开始后台加载模型（这可能需要 1-3 分钟，请耐心等待）...")
+    logger.info("服务器将立即启动，模型在后台加载")
     logger.info("=" * 70)
     
     global models_loading, models_loaded
     
-    models_loading = True
-    startup_start = time.time()
-    try:
-        # 在后台线程中加载模型，避免阻塞事件循环
-        loop = asyncio.get_event_loop()
-        logger.info("正在后台线程中加载模型...")
-        await asyncio.wait_for(
-            loop.run_in_executor(executor, load_models),
-            timeout=300.0  # 5分钟超时
-        )
-        models_loaded = True
-        startup_elapsed = time.time() - startup_start
-        logger.info("=" * 70)
-        logger.info(f"✅ 模型加载完成，服务器就绪（总耗时 {startup_elapsed:.1f} 秒）")
-        logger.info("=" * 70)
-    except asyncio.TimeoutError:
-        startup_elapsed = time.time() - startup_start
-        logger.error("=" * 70)
-        logger.error(f"❌ 模型加载超时（超过5分钟，已耗时 {startup_elapsed:.1f} 秒）")
-        logger.error("服务器将继续运行，但模型未加载")
-        logger.error("首次请求时会自动重试加载模型")
-        logger.error("=" * 70)
-        models_loaded = False
-    except Exception as e:
-        startup_elapsed = time.time() - startup_start
-        logger.error("=" * 70)
-        logger.error(f"❌ 模型加载失败（已耗时 {startup_elapsed:.1f} 秒）")
-        logger.error(f"   错误类型: {type(e).__name__}")
-        logger.error(f"   错误信息: {e}")
-        logger.error("服务器将继续运行，但模型未加载")
-        logger.error("首次请求时会自动重试加载模型")
-        logger.error("=" * 70)
-        import traceback
-        traceback.print_exc()
-        models_loaded = False
-    finally:
-        models_loading = False
+    # 在后台任务中加载模型，不阻塞服务器启动
+    async def load_models_background():
+        global models_loading, models_loaded
+        models_loading = True
+        startup_start = time.time()
+        try:
+            logger.info("正在后台线程中加载模型...")
+            loop = asyncio.get_event_loop()
+            await asyncio.wait_for(
+                loop.run_in_executor(executor, load_models),
+                timeout=300.0  # 5分钟超时
+            )
+            models_loaded = True
+            startup_elapsed = time.time() - startup_start
+            logger.info("=" * 70)
+            logger.info(f"✅ 模型加载完成，服务器就绪（总耗时 {startup_elapsed:.1f} 秒）")
+            logger.info("=" * 70)
+        except asyncio.TimeoutError:
+            startup_elapsed = time.time() - startup_start
+            logger.error("=" * 70)
+            logger.error(f"❌ 模型加载超时（超过5分钟，已耗时 {startup_elapsed:.1f} 秒）")
+            logger.error("服务器将继续运行，但模型未加载")
+            logger.error("首次请求时会自动重试加载模型")
+            logger.error("=" * 70)
+            models_loaded = False
+        except Exception as e:
+            startup_elapsed = time.time() - startup_start
+            logger.error("=" * 70)
+            logger.error(f"❌ 模型加载失败（已耗时 {startup_elapsed:.1f} 秒）")
+            logger.error(f"   错误类型: {type(e).__name__}")
+            logger.error(f"   错误信息: {e}")
+            logger.error("服务器将继续运行，但模型未加载")
+            logger.error("首次请求时会自动重试加载模型")
+            logger.error("=" * 70)
+            import traceback
+            traceback.print_exc()
+            models_loaded = False
+        finally:
+            models_loading = False
+    
+    # 启动后台任务，不等待完成
+    asyncio.create_task(load_models_background())
+    logger.info("✅ 模型加载任务已启动（后台运行）")
     
     yield
     
