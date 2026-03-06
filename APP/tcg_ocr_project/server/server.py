@@ -194,22 +194,33 @@ def _import_heavy_libraries():
     
     if paddle is not None:
         # 已经导入过了
+        logger.info("✅ 重型库已导入，跳过")
         return
     
-    logger.info("开始导入重型库...")
+    logger.info("=" * 70)
+    logger.info("步骤 1/2: 开始导入重型库...")
+    logger.info("=" * 70)
     start_time = time.time()
     
     try:
-        logger.info("  导入 paddle（这可能需要 30-60 秒，请耐心等待）...")
+        # 1.1 导入 paddle
+        logger.info("[1.1/4] 导入 paddle（这可能需要 30-60 秒，请耐心等待）...")
+        logger.info("  - 正在导入 paddle 模块...")
+        paddle_start = time.time()
         import paddle as _paddle
         paddle = _paddle
-        elapsed = time.time() - start_time
-        logger.info(f"  ✅ paddle 导入成功（耗时 {elapsed:.1f} 秒）")
+        paddle_elapsed = time.time() - paddle_start
+        logger.info(f"  ✅ paddle 导入成功（耗时 {paddle_elapsed:.1f} 秒）")
+        logger.info(f"  - paddle 版本: {paddle.__version__ if hasattr(paddle, '__version__') else '未知'}")
         
-        logger.info("  导入 ppocr 模块...")
+        # 1.2 导入 ppocr 模块
+        logger.info("[1.2/4] 导入 ppocr 模块...")
+        logger.info("  - 正在导入 ppocr.modeling.architectures...")
         ppocr_start = time.time()
         from ppocr.modeling.architectures import build_model as _build_model
+        logger.info("  - 正在导入 ppocr.postprocess...")
         from ppocr.postprocess import build_post_process as _build_post_process
+        logger.info("  - 正在导入 ppocr.data...")
         from ppocr.data import create_operators as _create_operators, transform as _transform
         build_model = _build_model
         build_post_process = _build_post_process
@@ -218,14 +229,18 @@ def _import_heavy_libraries():
         ppocr_elapsed = time.time() - ppocr_start
         logger.info(f"  ✅ ppocr 模块导入成功（耗时 {ppocr_elapsed:.1f} 秒）")
         
-        logger.info("  导入 yaml...")
+        # 1.3 导入 yaml
+        logger.info("[1.3/4] 导入 yaml...")
+        logger.info("  - 正在导入 yaml 模块...")
         yaml_start = time.time()
         import yaml as _yaml
         yaml = _yaml
         yaml_elapsed = time.time() - yaml_start
         logger.info(f"  ✅ yaml 导入成功（耗时 {yaml_elapsed:.1f} 秒）")
         
-        logger.info("  导入 ultralytics...")
+        # 1.4 导入 ultralytics
+        logger.info("[1.4/4] 导入 ultralytics...")
+        logger.info("  - 正在导入 ultralytics.YOLO...")
         ultralytics_start = time.time()
         from ultralytics import YOLO as _YOLO
         YOLO = _YOLO
@@ -233,10 +248,27 @@ def _import_heavy_libraries():
         logger.info(f"  ✅ ultralytics 导入成功（耗时 {ultralytics_elapsed:.1f} 秒）")
         
         total_elapsed = time.time() - start_time
-        logger.info(f"所有库导入完成（总耗时 {total_elapsed:.1f} 秒）")
+        logger.info("=" * 70)
+        logger.info(f"✅ 所有库导入完成（总耗时 {total_elapsed:.1f} 秒）")
+        logger.info("=" * 70)
+    except ImportError as e:
+        elapsed = time.time() - start_time
+        logger.error("=" * 70)
+        logger.error(f"❌ 导入错误（耗时 {elapsed:.1f} 秒）")
+        logger.error(f"   错误类型: ImportError")
+        logger.error(f"   错误信息: {e}")
+        logger.error(f"   可能原因: 缺少依赖包或模块路径错误")
+        logger.error("=" * 70)
+        import traceback
+        traceback.print_exc()
+        raise
     except Exception as e:
         elapsed = time.time() - start_time
-        logger.error(f"❌ 导入重型库失败（耗时 {elapsed:.1f} 秒）: {e}")
+        logger.error("=" * 70)
+        logger.error(f"❌ 导入重型库失败（耗时 {elapsed:.1f} 秒）")
+        logger.error(f"   错误类型: {type(e).__name__}")
+        logger.error(f"   错误信息: {e}")
+        logger.error("=" * 70)
         import traceback
         traceback.print_exc()
         raise
@@ -295,11 +327,65 @@ stats = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理（启动和关闭）"""
-    # 启动时执行
-    logger.info(f"服务器启动完成，模型将在首次请求时加载")
-    logger.info(f"服务器配置: MAX_WORKERS={MAX_WORKERS}, MAX_QUEUE_SIZE={MAX_QUEUE_SIZE}")
+    # 启动时执行 - 加载模型
+    logger.info("=" * 70)
+    logger.info("🚀 服务器启动中...")
+    logger.info("=" * 70)
+    logger.info(f"服务器配置:")
+    logger.info(f"  - MAX_WORKERS: {MAX_WORKERS}")
+    logger.info(f"  - MAX_QUEUE_SIZE: {MAX_QUEUE_SIZE}")
+    logger.info(f"  - REQUEST_TIMEOUT: {REQUEST_TIMEOUT} 秒")
+    logger.info(f"  - QUEUE_WAIT_TIMEOUT: {QUEUE_WAIT_TIMEOUT} 秒")
+    logger.info("=" * 70)
+    logger.info("开始加载模型（这可能需要 1-3 分钟，请耐心等待）...")
+    logger.info("=" * 70)
+    
+    global models_loading, models_loaded
+    
+    models_loading = True
+    startup_start = time.time()
+    try:
+        # 在后台线程中加载模型，避免阻塞事件循环
+        loop = asyncio.get_event_loop()
+        logger.info("正在后台线程中加载模型...")
+        await asyncio.wait_for(
+            loop.run_in_executor(executor, load_models),
+            timeout=300.0  # 5分钟超时
+        )
+        models_loaded = True
+        startup_elapsed = time.time() - startup_start
+        logger.info("=" * 70)
+        logger.info(f"✅ 模型加载完成，服务器就绪（总耗时 {startup_elapsed:.1f} 秒）")
+        logger.info("=" * 70)
+    except asyncio.TimeoutError:
+        startup_elapsed = time.time() - startup_start
+        logger.error("=" * 70)
+        logger.error(f"❌ 模型加载超时（超过5分钟，已耗时 {startup_elapsed:.1f} 秒）")
+        logger.error("服务器将继续运行，但模型未加载")
+        logger.error("首次请求时会自动重试加载模型")
+        logger.error("=" * 70)
+        models_loaded = False
+    except Exception as e:
+        startup_elapsed = time.time() - startup_start
+        logger.error("=" * 70)
+        logger.error(f"❌ 模型加载失败（已耗时 {startup_elapsed:.1f} 秒）")
+        logger.error(f"   错误类型: {type(e).__name__}")
+        logger.error(f"   错误信息: {e}")
+        logger.error("服务器将继续运行，但模型未加载")
+        logger.error("首次请求时会自动重试加载模型")
+        logger.error("=" * 70)
+        import traceback
+        traceback.print_exc()
+        models_loaded = False
+    finally:
+        models_loading = False
+    
     yield
+    
     # 关闭时执行（如果需要清理资源）
+    logger.info("=" * 70)
+    logger.info("服务器正在关闭...")
+    logger.info("=" * 70)
 
 app = FastAPI(
     title="TCG OCR API",
@@ -384,51 +470,105 @@ def load_models():
     _import_heavy_libraries()
     
     logger.info("=" * 70)
-    logger.info("开始加载模型...")
+    logger.info("步骤 2/2: 开始加载模型...")
     logger.info("=" * 70)
     
     # 1. 加载 YOLO 模型
-    logger.info("[1/3] 加载 YOLO 模型...")
+    logger.info("[2.1/3] 加载 YOLO 模型...")
+    logger.info("  - 正在查找 YOLO 模型文件...")
     yolo_path = None
-    for path in possible_yolo_paths:
+    for i, path in enumerate(possible_yolo_paths, 1):
+        logger.info(f"    [{i}/{len(possible_yolo_paths)}] 检查路径: {path}")
         if path.exists():
             yolo_path = path
+            file_size = path.stat().st_size / (1024 * 1024)  # MB
+            logger.info(f"  ✅ 找到 YOLO 模型: {yolo_path}")
+            logger.info(f"  - 文件大小: {file_size:.2f} MB")
             break
+        else:
+            logger.info(f"    ❌ 文件不存在")
     
     if yolo_path:
         try:
+            logger.info("  - 正在加载 YOLO 模型（这可能需要 10-30 秒）...")
+            yolo_load_start = time.time()
             yolo_model = YOLO(str(yolo_path))
-            logger.info(f"✅ YOLO模型加载成功: {yolo_path}")
+            yolo_load_elapsed = time.time() - yolo_load_start
+            logger.info(f"  ✅ YOLO模型加载成功（耗时 {yolo_load_elapsed:.1f} 秒）")
+            logger.info(f"  - 模型路径: {yolo_path}")
+        except FileNotFoundError as e:
+            logger.error("=" * 70)
+            logger.error(f"❌ YOLO模型文件未找到")
+            logger.error(f"   错误信息: {e}")
+            logger.error(f"   已检查的路径:")
+            for path in possible_yolo_paths:
+                logger.error(f"     - {path} (存在: {path.exists()})")
+            logger.error("=" * 70)
+            raise
         except Exception as e:
-            logger.error(f"❌ YOLO模型加载失败: {e}")
+            logger.error("=" * 70)
+            logger.error(f"❌ YOLO模型加载失败")
+            logger.error(f"   错误类型: {type(e).__name__}")
+            logger.error(f"   错误信息: {e}")
+            logger.error(f"   模型路径: {yolo_path}")
+            logger.error("=" * 70)
             import traceback
             traceback.print_exc()
             raise
     else:
-        logger.warning("⚠️  未找到YOLO模型文件")
+        logger.error("=" * 70)
+        logger.error("❌ 未找到YOLO模型文件")
+        logger.error("   已检查的路径:")
+        for path in possible_yolo_paths:
+            logger.error(f"     - {path} (存在: {path.exists()})")
+        logger.error("=" * 70)
         raise FileNotFoundError("YOLO模型文件不存在")
     
     # 2. 加载 OCR 模型
-    logger.info("[2/3] 加载 OCR 模型...")
+    logger.info("[2.2/3] 加载 OCR 模型...")
+    logger.info("  - 正在查找 OCR 模型文件...")
     
     ocr_model_path = None
-    for path in possible_ocr_paths:
+    for i, path in enumerate(possible_ocr_paths, 1):
+        logger.info(f"    [{i}/{len(possible_ocr_paths)}] 检查路径: {path}")
         if path.exists():
             ocr_model_path = path
+            file_size = path.stat().st_size / (1024 * 1024)  # MB
+            logger.info(f"  ✅ 找到 OCR 模型: {ocr_model_path}")
+            logger.info(f"  - 文件大小: {file_size:.2f} MB")
             break
+        else:
+            logger.info(f"    ❌ 文件不存在")
     
     if not ocr_model_path:
+        logger.error("=" * 70)
+        logger.error("❌ OCR模型文件不存在")
+        logger.error("   已检查的路径:")
+        for path in possible_ocr_paths:
+            logger.error(f"     - {path} (存在: {path.exists()})")
+        logger.error("=" * 70)
         raise FileNotFoundError("OCR模型文件不存在")
     
+    logger.info("  - 正在检查 OCR 配置文件...")
+    logger.info(f"    配置文件路径: {OCR_CONFIG_FILE}")
     if not OCR_CONFIG_FILE.exists():
+        logger.error("=" * 70)
+        logger.error(f"❌ OCR配置文件不存在: {OCR_CONFIG_FILE}")
+        logger.error("=" * 70)
         raise FileNotFoundError(f"OCR配置文件不存在: {OCR_CONFIG_FILE}")
+    logger.info(f"  ✅ OCR 配置文件存在")
     
     try:
         # 读取配置
+        logger.info("  - 正在读取配置文件...")
+        config_start = time.time()
         with open(OCR_CONFIG_FILE, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
+        config_elapsed = time.time() - config_start
+        logger.info(f"  ✅ 配置文件读取成功（耗时 {config_elapsed:.2f} 秒）")
         
         # 修复字符字典配置：优先使用本地 PaddleOCR 源码的字典
+        logger.info("  - 正在查找字符字典文件...")
         en_dict_candidates = [
             PROJECT_ROOT / 'PaddleOCR' / 'ppocr' / 'utils' / 'en_dict.txt',
         ]
@@ -438,74 +578,119 @@ def load_models():
             import os
             paddleocr_root = Path(os.path.dirname(paddleocr_pkg.__file__))
             en_dict_candidates.insert(0, paddleocr_root / 'ppocr' / 'utils' / 'en_dict.txt')
-        except Exception:
-            pass
+            logger.info(f"    - 检查 paddleocr 包路径: {paddleocr_root}")
+        except Exception as e:
+            logger.info(f"    - 无法从 paddleocr 包获取路径: {e}")
         
-        for en_dict_path in en_dict_candidates:
+        dict_found = False
+        for i, en_dict_path in enumerate(en_dict_candidates, 1):
+            logger.info(f"    [{i}/{len(en_dict_candidates)}] 检查字典路径: {en_dict_path}")
             if en_dict_path.exists():
                 config['Global']['character_dict_path'] = str(en_dict_path)
                 config['Global']['use_space_char'] = True
-                logger.info(f"✅ 使用字符字典: {en_dict_path}")
+                logger.info(f"  ✅ 使用字符字典: {en_dict_path}")
+                dict_found = True
                 break
+            else:
+                logger.info(f"      ❌ 文件不存在")
+        
+        if not dict_found:
+            logger.warning("  ⚠️  未找到字符字典文件，使用默认配置")
         
         # 设置设备（Render通常没有GPU，使用CPU）
+        logger.info("  - 正在设置计算设备...")
         use_gpu = os.getenv('USE_GPU', 'false').lower() == 'true'
+        logger.info(f"    USE_GPU 环境变量: {use_gpu}")
         if use_gpu and paddle.device.is_compiled_with_cuda():
             paddle.set_device('gpu:0')
-            logger.info("✅ 使用 GPU")
+            logger.info("  ✅ 使用 GPU")
         else:
             paddle.set_device('cpu')
-            logger.info("✅ 使用 CPU")
+            logger.info("  ✅ 使用 CPU")
         
         # 构建后处理
+        logger.info("  - 正在构建后处理器...")
+        post_process_start = time.time()
         post_process_class = build_post_process(config['PostProcess'], config['Global'])
+        post_process_elapsed = time.time() - post_process_start
+        logger.info(f"  ✅ 后处理器构建成功（耗时 {post_process_elapsed:.2f} 秒）")
         
         # 修复 MultiHead 配置
         if config['Architecture']['Head']['name'] == 'MultiHead':
+            logger.info("  - 检测到 MultiHead 架构，正在修复配置...")
             char_num = len(getattr(post_process_class, 'character'))
-            logger.info(f"   字符字典实际字符数: {char_num}")
+            logger.info(f"    字符字典实际字符数: {char_num}")
             
             out_channels_list = {}
             out_channels_list['CTCLabelDecode'] = char_num
             out_channels_list['SARLabelDecode'] = char_num + 2
             out_channels_list['NRTRLabelDecode'] = char_num + 3
             config['Architecture']['Head']['out_channels_list'] = out_channels_list
+            logger.info("  ✅ MultiHead 配置修复完成")
         
         # 构建模型
+        logger.info("  - 正在构建 OCR 模型架构...")
+        model_build_start = time.time()
         ocr_model = build_model(config['Architecture'])
+        model_build_elapsed = time.time() - model_build_start
+        logger.info(f"  ✅ 模型架构构建成功（耗时 {model_build_elapsed:.2f} 秒）")
         
         # 加载权重
-        logger.info(f"   加载模型权重: {ocr_model_path}")
+        logger.info("  - 正在加载模型权重...")
+        logger.info(f"    权重文件: {ocr_model_path}")
+        weight_load_start = time.time()
         state_dict = paddle.load(str(ocr_model_path))
         ocr_model.set_state_dict(state_dict)
         ocr_model.eval()
-        
+        weight_load_elapsed = time.time() - weight_load_start
+        logger.info(f"  ✅ 模型权重加载成功（耗时 {weight_load_elapsed:.2f} 秒）")
         logger.info("✅ OCR模型加载完成")
         
         # 3. 准备数据变换
-        logger.info("[3/3] 准备数据变换...")
+        logger.info("[2.3/3] 准备数据变换...")
+        logger.info("  - 正在读取评估数据变换配置...")
         eval_transforms = config['Eval']['dataset']['transforms'].copy()
+        logger.info(f"  - 原始变换数量: {len(eval_transforms)}")
         transforms = []
         for op in eval_transforms:
             op_name = list(op)[0]
             if "Label" in op_name:
+                logger.info(f"    - 跳过标签变换: {op_name}")
                 continue
             elif op_name in ["RecResizeImg"]:
                 op[op_name]["infer_mode"] = True
+                logger.info(f"    - 设置推理模式: {op_name}")
             elif op_name == "KeepKeys":
                 op[op_name]["keep_keys"] = ["image"]
+                logger.info(f"    - 设置保留键: {op_name}")
             transforms.append(op)
         
+        logger.info(f"  - 最终变换数量: {len(transforms)}")
         config['Global']["infer_mode"] = True
+        logger.info("  - 正在创建变换操作符...")
+        transform_start = time.time()
         eval_ops = create_operators(transforms, config['Global'])
-        logger.info("✅ 数据变换准备完成")
+        transform_elapsed = time.time() - transform_start
+        logger.info(f"  ✅ 数据变换准备完成（耗时 {transform_elapsed:.2f} 秒）")
         
         logger.info("=" * 70)
         logger.info("✅ 所有模型加载完成！")
         logger.info("=" * 70)
         
+    except FileNotFoundError as e:
+        logger.error("=" * 70)
+        logger.error(f"❌ 文件未找到错误")
+        logger.error(f"   错误信息: {e}")
+        logger.error("=" * 70)
+        import traceback
+        traceback.print_exc()
+        raise
     except Exception as e:
-        logger.error(f"❌ OCR模型加载失败: {e}")
+        logger.error("=" * 70)
+        logger.error(f"❌ OCR模型加载失败")
+        logger.error(f"   错误类型: {type(e).__name__}")
+        logger.error(f"   错误信息: {e}")
+        logger.error("=" * 70)
         import traceback
         traceback.print_exc()
         raise
@@ -679,54 +864,68 @@ models_loading = False
 models_loaded = False
 
 async def ensure_models_loaded():
-    """确保模型已加载（延迟加载）"""
+    """确保模型已加载（如果启动时加载失败，则延迟加载）"""
     global models_loading, models_loaded, yolo_model, ocr_model
     
-    if models_loaded:
+    # 如果已经加载，直接返回
+    if models_loaded and yolo_model is not None and ocr_model is not None:
         return
     
+    # 如果正在加载，等待完成
     if models_loading:
-        # 如果正在加载，等待完成（最多等待5分钟）
+        logger.info("=" * 70)
         logger.info("模型正在加载中，等待完成...")
+        logger.info("=" * 70)
         wait_start = time.time()
         max_wait_time = 300  # 5分钟
         while models_loading:
             if time.time() - wait_start > max_wait_time:
-                logger.error(f"等待模型加载超时（{max_wait_time}秒）")
+                logger.error(f"❌ 等待模型加载超时（{max_wait_time}秒）")
                 raise TimeoutError(f"模型加载超时（{max_wait_time}秒）")
             await asyncio.sleep(0.5)
             # 每10秒输出一次进度
             elapsed = time.time() - wait_start
             if int(elapsed) % 10 == 0 and elapsed > 0:
                 logger.info(f"  仍在等待模型加载...（已等待 {elapsed:.0f} 秒）")
+        logger.info("✅ 模型加载完成")
         return
     
-    models_loading = True
-    try:
-        if yolo_model is None or ocr_model is None:
-            logger.info("首次请求，开始加载模型...")
+    # 如果启动时加载失败，现在尝试加载
+    if yolo_model is None or ocr_model is None:
+        logger.info("=" * 70)
+        logger.info("⚠️  启动时模型未加载，现在开始加载...")
+        logger.info("=" * 70)
+        models_loading = True
+        try:
             logger.info("注意：模型加载可能需要 1-3 分钟，请耐心等待...")
-            
-            # 在后台线程中加载模型，避免阻塞事件循环
             loop = asyncio.get_event_loop()
-            try:
-                # 使用 asyncio.wait_for 设置超时（5分钟）
-                await asyncio.wait_for(
-                    loop.run_in_executor(executor, load_models),
-                    timeout=300.0  # 5分钟超时
-                )
-                models_loaded = True
-                logger.info("✅ 模型加载完成，服务就绪")
-            except asyncio.TimeoutError:
-                logger.error("❌ 模型加载超时（超过5分钟）")
-                models_loading = False
-                raise TimeoutError("模型加载超时（超过5分钟）。请检查模型文件大小和服务器资源。")
-    except Exception as e:
-        logger.error(f"模型加载失败: {e}")
-        models_loading = False
-        raise
-    finally:
-        models_loading = False
+            await asyncio.wait_for(
+                loop.run_in_executor(executor, load_models),
+                timeout=300.0  # 5分钟超时
+            )
+            models_loaded = True
+            logger.info("=" * 70)
+            logger.info("✅ 模型加载完成，服务就绪")
+            logger.info("=" * 70)
+        except asyncio.TimeoutError:
+            logger.error("=" * 70)
+            logger.error("❌ 模型加载超时（超过5分钟）")
+            logger.error("请检查模型文件大小和服务器资源")
+            logger.error("=" * 70)
+            models_loading = False
+            raise TimeoutError("模型加载超时（超过5分钟）。请检查模型文件大小和服务器资源。")
+        except Exception as e:
+            logger.error("=" * 70)
+            logger.error(f"❌ 模型加载失败")
+            logger.error(f"   错误类型: {type(e).__name__}")
+            logger.error(f"   错误信息: {e}")
+            logger.error("=" * 70)
+            models_loading = False
+            import traceback
+            traceback.print_exc()
+            raise
+        finally:
+            models_loading = False
 
 @app.get("/", response_model=HealthResponse)
 async def root():
