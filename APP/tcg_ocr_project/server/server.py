@@ -48,7 +48,7 @@ logger_temp.info(f"项目根目录: {PROJECT_ROOT}")
 logger_temp.info(f"PaddleOCR目录路径: {PADDLEOCR_DIR}")
 logger_temp.info(f"PaddleOCR目录存在: {PADDLEOCR_DIR.exists()}")
 
-# 优先使用本地PaddleOCR目录
+# 检查本地PaddleOCR目录（必须存在于仓库中）
 if PADDLEOCR_DIR.exists():
     ppocr_local = PADDLEOCR_DIR / 'ppocr'
     modeling_local = ppocr_local / 'modeling'
@@ -62,77 +62,38 @@ if PADDLEOCR_DIR.exists():
     try:
         contents = list(PADDLEOCR_DIR.iterdir())
         logger_temp.info(f"  PaddleOCR目录内容数量: {len(contents)}")
+        
         if len(contents) == 0:
-            logger_temp.warning(f"⚠️  PaddleOCR目录为空，尝试在启动时克隆...")
-            # 尝试在启动时克隆（作为最后的补救措施）
-            import subprocess
-            import shutil
-            try:
-                # 删除空目录
-                if PADDLEOCR_DIR.exists():
-                    shutil.rmtree(PADDLEOCR_DIR)
-                logger_temp.info("  开始克隆 PaddleOCR...")
-                result = subprocess.run(
-                    ['git', 'clone', '--depth', '1', 'https://github.com/PaddlePaddle/PaddleOCR.git', str(PADDLEOCR_DIR)],
-                    cwd=str(PROJECT_ROOT),
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
-                if result.returncode == 0 and modeling_local.exists():
-                    logger_temp.info("✅ 启动时克隆 PaddleOCR 成功")
-                    sys.path.insert(0, str(PADDLEOCR_DIR))
-                    ppocr_found = True
-                else:
-                    logger_temp.error(f"❌ 启动时克隆失败: {result.stderr}")
-            except Exception as e:
-                logger_temp.error(f"❌ 启动时克隆异常: {e}")
+            logger_temp.error("=" * 70)
+            logger_temp.error("❌ PaddleOCR目录为空！")
+            logger_temp.error("   请确保 PaddleOCR 目录已正确添加到 Git 仓库中")
+            logger_temp.error("   目录路径: " + str(PADDLEOCR_DIR))
+            logger_temp.error("=" * 70)
         elif modeling_local.exists():
             sys.path.insert(0, str(PADDLEOCR_DIR))
             logger_temp.info(f"✅ 使用本地PaddleOCR目录: {PADDLEOCR_DIR}")
             ppocr_found = True
         else:
-            logger_temp.warning(f"⚠️  本地PaddleOCR目录存在但ppocr.modeling不存在")
-            logger_temp.info(f"  PaddleOCR目录内容（前20项）: {[str(c.name) for c in contents[:20]]}")
+            logger_temp.error("=" * 70)
+            logger_temp.error("❌ PaddleOCR目录存在但ppocr.modeling不存在")
+            logger_temp.error("   请确保 PaddleOCR 目录完整，包含 ppocr/modeling 子目录")
+            logger_temp.error(f"  PaddleOCR目录内容（前20项）: {[str(c.name) for c in contents[:20]]}")
             if ppocr_local.exists():
                 ppocr_contents = list(ppocr_local.iterdir())[:20]
-                logger_temp.info(f"  ppocr目录内容（前20项）: {[str(c.name) for c in ppocr_contents]}")
+                logger_temp.error(f"  ppocr目录内容（前20项）: {[str(c.name) for c in ppocr_contents]}")
+            logger_temp.error("=" * 70)
     except Exception as e:
         logger_temp.error(f"  无法列出目录内容: {e}")
         import traceback
         logger_temp.error(traceback.format_exc())
 else:
-    logger_temp.warning(f"⚠️  本地PaddleOCR目录不存在: {PADDLEOCR_DIR}")
-    # 尝试在启动时克隆（作为最后的补救措施）
-    logger_temp.info("尝试在启动时克隆 PaddleOCR...")
-    import subprocess
-    import shutil
-    try:
-        logger_temp.info("  开始克隆 PaddleOCR...")
-        result = subprocess.run(
-            ['git', 'clone', '--depth', '1', 'https://github.com/PaddlePaddle/PaddleOCR.git', str(PADDLEOCR_DIR)],
-            cwd=str(PROJECT_ROOT),
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        if result.returncode == 0:
-            logger_temp.info("✅ 启动时克隆 PaddleOCR 成功")
-            # 重新检查
-            if (PADDLEOCR_DIR / 'ppocr' / 'modeling').exists():
-                sys.path.insert(0, str(PADDLEOCR_DIR))
-                logger_temp.info(f"✅ 使用启动时克隆的PaddleOCR目录: {PADDLEOCR_DIR}")
-                ppocr_found = True
-            else:
-                logger_temp.error(f"❌ 克隆成功但ppocr.modeling不存在")
-        else:
-            logger_temp.error(f"❌ 启动时克隆失败: {result.stderr}")
-    except subprocess.TimeoutError:
-        logger_temp.error("❌ 启动时克隆超时（5分钟）")
-    except Exception as e:
-        logger_temp.error(f"❌ 启动时克隆异常: {e}")
-        import traceback
-        logger_temp.error(traceback.format_exc())
+    logger_temp.error("=" * 70)
+    logger_temp.error("❌ PaddleOCR目录不存在！")
+    logger_temp.error("   请确保 PaddleOCR 目录已添加到 Git 仓库中")
+    logger_temp.error("   期望路径: " + str(PADDLEOCR_DIR))
+    logger_temp.error("   正确结构应该是:")
+    logger_temp.error("     APP/tcg_ocr_project/PaddleOCR/")
+    logger_temp.error("=" * 70)
 
 # 如果本地没有，尝试从paddleocr包中找到
 if not ppocr_found:
