@@ -27,7 +27,8 @@ services:
       cd APP/tcg_ocr_project/server && 
       pip install --upgrade pip &&
       pip cache purge || true &&
-      pip install --no-cache-dir -r requirements_server.txt
+      pip install --no-cache-dir --no-deps fastapi==0.104.1 "uvicorn[standard]==0.24.0" python-multipart==0.0.6 "numpy>=2.0.0" paddlepaddle==2.6.2 pyyaml==6.0.1 torch==2.5.1 torchvision==0.20.1 ultralytics==8.1.0 pillow==10.1.0 "shapely>=2.1.0" "opencv-python>=4.13.0" &&
+      pip install --no-cache-dir "paddleocr>=2.7.0"
     startCommand: cd server && python server.py
     envVars:
       - key: PORT
