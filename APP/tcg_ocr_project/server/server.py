@@ -228,6 +228,17 @@ def _import_heavy_libraries():
         ultralytics_start = time.time()
         from ultralytics import YOLO as _YOLO
         YOLO = _YOLO
+        
+        # 修复 PyTorch 2.6 的安全更新问题
+        # PyTorch 2.6 默认 weights_only=True，需要允许 ultralytics 的类
+        try:
+            import torch
+            from ultralytics.nn.tasks import DetectionModel
+            torch.serialization.add_safe_globals([DetectionModel])
+            logger.info("  - 已修复 PyTorch 2.6 安全更新问题")
+        except Exception as e:
+            logger.warning(f"  - 无法修复 PyTorch 安全更新（可能不影响）: {e}")
+        
         ultralytics_elapsed = time.time() - ultralytics_start
         logger.info(f"  ✅ ultralytics 导入成功（耗时 {ultralytics_elapsed:.1f} 秒）")
         
