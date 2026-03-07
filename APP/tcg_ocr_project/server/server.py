@@ -101,7 +101,7 @@ if not ppocr_found:
     logger_temp.info("尝试从paddleocr包中查找ppocr模块...")
     try:
         import paddleocr
-        import os
+        # 注意：os 已在文件顶部导入，不要在这里重新导入
         paddleocr_path = os.path.dirname(paddleocr.__file__)
         logger_temp.info(f"  找到paddleocr包路径: {paddleocr_path}")
         
@@ -621,7 +621,7 @@ def load_models():
         # 尝试从paddleocr包中获取
         try:
             import paddleocr as paddleocr_pkg
-            import os
+            # 注意：os 已在文件顶部导入，不要在这里重新导入
             paddleocr_root = Path(os.path.dirname(paddleocr_pkg.__file__))
             en_dict_candidates.insert(0, paddleocr_root / 'ppocr' / 'utils' / 'en_dict.txt')
             logger.info(f"    - 检查 paddleocr 包路径: {paddleocr_root}")
