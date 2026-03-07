@@ -24,7 +24,10 @@ services:
       fi &&
       echo "✅ PaddleOCR 目录检查通过" &&
       echo "=== 安装依赖 ===" &&
-      cd APP/tcg_ocr_project/server && pip install -r requirements_server.txt
+      cd APP/tcg_ocr_project/server && 
+      pip install --upgrade pip &&
+      pip cache purge || true &&
+      pip install --no-cache-dir -r requirements_server.txt
     startCommand: cd server && python server.py
     envVars:
       - key: PORT
