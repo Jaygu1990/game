@@ -6,9 +6,12 @@ paddlepaddle==2.6.2
 paddleocr>=2.7.0
 opencv-python>=4.13.0
 pyyaml==6.0.1
+torch==2.5.1
+torchvision==0.20.1
 ultralytics==8.1.0
 pillow==10.1.0
 shapely>=2.1.0
 # 注意：使用numpy 2.0以兼容用numpy 2.0训练的模型文件
 # 模型文件（best_accuracy.pdparams）是用numpy 2.0训练的，必须使用numpy 2.0加载
 # shapely需要>=2.1.0以支持numpy 2.0
+# torch==2.5.1 避免 PyTorch 2.6 的 weights_only 安全检查问题
