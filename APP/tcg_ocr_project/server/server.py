@@ -602,6 +602,11 @@ def load_models():
             paddle.set_device('cpu')
             logger.info("  ✅ 使用 CPU")
         
+        # 优化内存使用（Render Free Plan 只有 512MB）
+        logger.info("  - 正在优化内存使用...")
+        os.environ['FLAGS_allocator_strategy'] = 'auto_growth'  # 自动增长内存分配
+        logger.info("  ✅ 内存优化设置完成")
+        
         # 构建后处理
         logger.info("  - 正在构建后处理器...")
         post_process_start = time.time()

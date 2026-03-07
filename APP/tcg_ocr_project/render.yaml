@@ -30,7 +30,7 @@ services:
       - key: PORT
         value: 8000
       - key: MAX_WORKERS
-        value: 4
+        value: 2
       - key: MAX_QUEUE_SIZE
         value: 100
       - key: REQUEST_TIMEOUT
