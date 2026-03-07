@@ -230,14 +230,41 @@ def _import_heavy_libraries():
         YOLO = _YOLO
         
         # 修复 PyTorch 2.6 的安全更新问题
-        # PyTorch 2.6 默认 weights_only=True，需要允许 ultralytics 的类
+        # PyTorch 2.6 默认 weights_only=True，需要允许 ultralytics 和 PyTorch 的类
         try:
             import torch
             from ultralytics.nn.tasks import DetectionModel
-            torch.serialization.add_safe_globals([DetectionModel])
-            logger.info("  - 已修复 PyTorch 2.6 安全更新问题")
+            from torch.nn.modules.container import Sequential
+            from torch.nn import Module
+            from collections import OrderedDict
+            
+            # 添加所有需要的类到安全全局列表
+            safe_classes = [
+                DetectionModel,
+                Sequential,
+                Module,
+                OrderedDict,
+            ]
+            
+            # 尝试添加更多可能需要的 ultralytics 类
+            try:
+                from ultralytics.nn.modules import Conv, Bottleneck, C2f, SPPF
+                safe_classes.extend([Conv, Bottleneck, C2f, SPPF])
+            except:
+                pass
+            
+            try:
+                from ultralytics.nn.tasks import BaseModel, SegmentationModel, PoseModel, ClassificationModel
+                safe_classes.extend([BaseModel, SegmentationModel, PoseModel, ClassificationModel])
+            except:
+                pass
+            
+            torch.serialization.add_safe_globals(safe_classes)
+            logger.info(f"  - 已修复 PyTorch 2.6 安全更新问题（添加了 {len(safe_classes)} 个安全类）")
         except Exception as e:
             logger.warning(f"  - 无法修复 PyTorch 安全更新（可能不影响）: {e}")
+            import traceback
+            traceback.print_exc()
         
         ultralytics_elapsed = time.time() - ultralytics_start
         logger.info(f"  ✅ ultralytics 导入成功（耗时 {ultralytics_elapsed:.1f} 秒）")
