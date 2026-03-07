@@ -781,17 +781,7 @@ def process_image_sync(image_bytes: bytes) -> Dict:
             cv2.imwrite(tmp_path, img)
         
         try:
-            # 检查numpy是否可用
-            try:
-                import numpy as np
-                np.array([1, 2, 3])  # 测试numpy基本功能
-            except Exception as np_error:
-                logger.error(f"numpy检查失败: {np_error}")
-                return {
-                    'success': False,
-                    'error': f'numpy不可用: {str(np_error)}'
-                }
-            
+            # YOLO检测code区域
             results = yolo_model(str(tmp_path), verbose=False)
             
             for result in results:
